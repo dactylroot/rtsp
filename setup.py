@@ -4,7 +4,7 @@ from os import path
 with open('README.md') as f:
     long_description = f.read()
 
-version = '1.0.2'
+version = '1.0.3'
 
 setup(name='rtsp'
     , version=version
@@ -17,6 +17,7 @@ setup(name='rtsp'
     , download_url="https://github.com/statueofmike/rtsp/archive/{0}.tar.gz".format(version)
     , license='MIT'
     , packages=['rtsp']
+    , include_package_data=True     # includes files from e.g. MANIFEST.in
     , classifiers=[
         'Development Status :: 5 - Production/Stable',
         'License :: OSI Approved :: MIT License',
