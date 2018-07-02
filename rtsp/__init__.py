@@ -2,11 +2,14 @@
     Bare functionality relying on ffmpeg system call. """
 
 import io as _io
-import numpy as _np
-from PIL import Image as _Image
 import subprocess as _sp
 import time
 from threading import Thread
+
+from PIL import Image as _Image
+
+with open('README.md') as f:
+    __doc__ = f.read()
  
 _sources = [ 'rtsp://root:pass@10.38.4.76/StreamId=1'
             ,'rtsp://10.38.5.145/ufirststream' ]
@@ -14,18 +17,21 @@ _sources = [ 'rtsp://root:pass@10.38.4.76/StreamId=1'
 def _has_ffmpeg():
     """ Check if ffmpeg is installed on the system """
     try:
-        if _sp.check_output(['which','ffmpeg']):
+        if _sp.check_output(['ffmpeg','-version']):
             return True
     except _sp.CalledProcessError:
         pass
     return False
 
-def fetch_image(rtsp_server_uri = _sources[0]):
-    """ Fetch a single frame using FFMPEG. Convert to PIL Image. """
-    
+def _check_ffmpeg():
     if not _has_ffmpeg():
         raise ModuleNotFoundError("`ffmpeg` not found by system call")
 
+def fetch_image(rtsp_server_uri = _sources[0]):
+    """ Fetch a single frame using FFMPEG. Convert to PIL Image. """
+    
+    _check_ffmpeg()
+    
     # ffmpeg -rtsp_transport tcp -i rtsp://root:pass@1.0.0.1/StreamId=1 -loglevel quiet -frames 1 -f image2pipe -
     ffmpeg_cmd =  ['ffmpeg',
             '-rtsp_transport','tcp',
@@ -37,8 +43,8 @@ def fetch_image(rtsp_server_uri = _sources[0]):
     raw = _sp.check_output(ffmpeg_cmd)
     return _Image.open(_io.BytesIO(raw))
 
-def fetch_batch():
-
+def _fetch_batch():
+    """ Returns three images concatenated. Don't currently know how to delimit and separate them. """
     cmd = ['ffmpeg', '-rtsp_transport', 'tcp', '-i', 'rtsp://root:pass@10.38.4.76/StreamId=2',  '-frames', '3', '-f', 'image2pipe', '-']
     
     return _sp.check_output(cmd)
@@ -50,8 +56,7 @@ class BackgroundListener:
         return self._current_image
 
     def __init__(self,rtsp_server_uri = _sources[0],fetch_wait_secs = 10):
-        if not _has_ffmpeg():
-            raise ModuleNotFoundError("`ffmpeg` not found by system call")
+        _check_ffmpeg()
 
         self._rtsp_server_uri = rtsp_server_uri
         self._fetch_wait_secs = fetch_wait_secs
@@ -91,17 +96,3 @@ class BackgroundListener:
             time.sleep(self._fetch_wait_secs)
         if self._verbose:
             print("<BackgroundListener>: shut down image fetch loop")
-
-    def _single_connection_attempt(self):
-        """ WIP -- trying to maintain and parse output from single RTSP connection """
-        ## TODO fix this thing
-        # ffmpeg -rtsp_transport tcp -i rtsp://root:pass@1.0.0.1/StreamId=1 -loglevel quiet -f image2pipe -
-        listener_cmd = ['ffmpeg',
-                        '-rtsp_transport','tcp',
-                        '-i', rtsp_server_uri,
-                        '-loglevel','quiet',
-                        #'-r', '1/10',
-                        '-f', 'image2pipe','-']
-        #self.proc = _sp.Popen(listener_cmd, stdout=_sp.PIPE, bufsize=10**8)
-
-
