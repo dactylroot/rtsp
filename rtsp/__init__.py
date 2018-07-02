@@ -8,9 +8,6 @@ from threading import Thread
 
 from PIL import Image as _Image
 
-with open('README.md') as f:
-    __doc__ = f.read()
- 
 _sources = [ 'rtsp://root:pass@10.38.4.76/StreamId=1'
             ,'rtsp://10.38.5.145/ufirststream' ]
 
