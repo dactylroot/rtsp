@@ -4,7 +4,7 @@ from os import path
 with open('README.md') as f:
     long_description = f.read()
 
-version = '1.0.4'
+version = '1.0.5'
 
 setup(name='rtsp'
     , version=version
@@ -28,8 +28,8 @@ setup(name='rtsp'
       ]
     , keywords='rtsp ffmpeg image stream'
     , install_requires=['pillow']
-    , python_requires='>=2.6'
-    , zip_safe=False
+    , python_requires='>=3.5'
+    , zip_safe=True
       )
 
 
