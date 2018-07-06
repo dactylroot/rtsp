@@ -4,7 +4,7 @@ from os import path
 with open('README.md') as f:
     long_description = f.read()
 
-version = '1.0.5'
+version = '1.0.6'
 
 setup(name='rtsp'
     , version=version
