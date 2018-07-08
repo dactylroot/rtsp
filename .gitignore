@@ -4,6 +4,7 @@ venv/*
 
 *.egg-info*
 *__pycache__*
+*__doc__*
 
 .python-version
 

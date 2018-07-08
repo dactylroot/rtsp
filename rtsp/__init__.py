@@ -10,7 +10,8 @@ import subprocess as _sp
 
 from PIL import Image as _Image
 
-# TODO can't figure out how to elegantly import and use README as docstring
+with open(_os.path.abspath(_os.path.dirname(__file__))+'/__doc__','r') as f:
+    __doc__ = f.read()
 
 _sources = [ 
               'rtsp://10.38.5.145/ufirststream'

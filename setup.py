@@ -4,9 +4,15 @@ from os import path
 with open('README.md') as f:
     long_description = f.read()
 
+name = 'rtsp'
 version = '1.0.6'
 
-setup(name='rtsp'
+### include README as main package docfile
+from shutil import copyfile
+_workdir = path.abspath(path.dirname(__file__))
+copyfile(_workdir+'/README.md',_workdir+'/{0}/__doc__'.format(name))
+
+setup(name=name
     , version=version
     , description='ffmpeg wrapper for RTSP client'
     , long_description=long_description
