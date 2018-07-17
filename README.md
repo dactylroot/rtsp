@@ -20,34 +20,45 @@
                                        /_|       /_|
 
 
-RTSP Client. Requires [ffmpeg](https://www.ffmpeg.org/) system call for RTSP support and [Pillow](https://pillow.readthedocs.io/en/5.1.x/) for parsing and conversion.
+RTSP Client. Requires OpenCV-Python
 
 ## Features
 
   * fetch a single image as Pillow Image
-  * open RTSP stream in FFmpeg and poll for most recent frame
+  * open RTSP stream and poll most recent frame as Pillow Image
+  * preview stream in OpenCV
 
 ## Examples
 
 One-off Retrieval
 
     import rtsp
-    image = rtsp.fetch_image('rtsp://1.0.0.1/StreamId=1')
+    with rtsp.Client('rtsp://...') as client:
+        client.read().show()
+
+Stream Preview
+
+    import rtsp
+    with rtsp.Client('rtsp://...') as client:
+        client.preview()
 
 Continuous Retrieval
 
     import rtsp
 
-    collector = rtsp.FFmpegListener()
+    client = rtsp.Client(rtsp_server_uri = 'rtsp://...')
 
-    image = collector.read()
+    image = client.read()
+
+    client.close()
 
 Continuous Retrieval Context Manager
 
     import rtsp
-    with rtsp.FFmpegListener() as collector:
-        _image = collector.read()
+
+    with rtsp.Client(rtsp_server_uri = 'rtsp://...') as client:
+        _image = client.read()
 
         while True:
             process_image(_image)
-            _image = collector.read()
+            _image = client.read()

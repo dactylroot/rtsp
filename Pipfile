@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 pillow = "*"
+opencv-python = "*"
 
 [dev-packages]
 

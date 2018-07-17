@@ -1,62 +1,26 @@
 """ RTSP Client
-    Bare functionality relying on ffmpeg system call. """
+    Wrapper around OpenCV-Python. """
 
 import io as _io
 import os as _os
-import subprocess as _sp
 
+import cv2 as _cv2
 from PIL import Image as _Image
 
 with open(_os.path.abspath(_os.path.dirname(__file__))+'/__doc__','r') as _f:
     __doc__ = _f.read()
 
-_source = 'rtsp://10.38.5.145/ufirststream'
+_source  = "rtsp://192.168.1.4/ufirststream/track1"
+_source2 = 'rtsp://10.38.5.145/ufirststream'
 
+class Client:
 
-def _check_ffmpeg():
-    """ Throw exception if ffmpeg isn't found """
-    try:
-        if _sp.check_output(['ffmpeg','-version']):
-            return
-    except _sp.CalledProcessError:
-        pass
-    raise ModuleNotFoundError("`ffmpeg` not found by system call")
-
-
-def fetch_image(rtsp_server_uri = _source,timeout_secs = 15):
-    """ Fetch a single frame using FFMPEG. Convert to PIL Image. Slow. """
-    
-    _check_ffmpeg()
-    
-    ffmpeg_cmd = "ffmpeg -rtsp_transport tcp -i {} -loglevel quiet -frames 1 -f image2pipe -".format(rtsp_server_uri)
-
-    #stdout = _sp.check_output(ffmpeg_cmd,timeout = timeout_secs)
-    with _sp.Popen(ffmpeg_cmd, shell=True,  stdout=_sp.PIPE) as process:
-        try:
-            stdout,stderr = process.communicate(timeout=timeout_secs)
-        except _sp.TimeoutExpired as e:
-            process.kill()
-            raise TimeoutError("Connection to {} timed out".format(rtsp_server_uri),e)
-    
-    return _Image.open(_io.BytesIO(stdout))
-
-
-class FFmpegListener:
-    """ Continuously fetches image frames from RTSP server in a background thread. """
-
-    def running(self):
-        """ Is background thread running """
-        return (self._proc != None) and (self._proc.poll() == None)
-
-    def __init__( self
-                , rtsp_server_uri = _source
-                ):
-        
-        _check_ffmpeg()
-
-        self._proc = None
-        self._cache_path = _os.path.abspath(_os.path.dirname(__file__))+'/_current.png'
-        self._rtsp_server_uri = rtsp_server_uri
+    def __init__(self, rtsp_server_uri = _source, verbose = True):
+        self.capture = _cv2.VideoCapture(rtsp_server_uri)
+        if self.capture.isOpened():
+            print("Connected to video source "+rtsp_server_uri)
+        else:
+            print("Couldn't connect to "+rtsp_server_uri)
 
     def __enter__(self,*args,**kwargs):
         """ Returns the object which later will have __exit__ called.
@@ -65,17 +29,30 @@ class FFmpegListener:
 
     def __exit__(self, type=None, value=None, traceback=None):
         """ Together with __enter__, allows support for `with-` clauses. """
-        self.shutdown()
+        self.close()
 
     def read(self):
-        return _Image.open(self._cache_path)
+        """ Read single frame """
+        ret, frame = self.capture.read()
+        if not ret:
+            return None
+        return _Image.fromarray(_cv2.cvtColor(frame, _cv2.COLOR_BGR2RGB))
 
-    def start(self):
-        cmd = "ffmpeg -rtsp_transport tcp -r 0.5 -i {} -update 1 {}".format(self._rtsp_server_uri,self._cache_path)
-        self._proc = _sp.Popen( cmd.split(' '), stdout=_sp.DEVNULL, stderr=_sp.STDOUT )
+    def preview(self):
+        win_name = 'Frame'
+        opening = True
+        _cv2.namedWindow(win_name, _cv2.WINDOW_AUTOSIZE)
+        _cv2.moveWindow(win_name,20,20)
+        while(self.capture.isOpened() and opening):
+            opening, frame = self.capture.read()
+            _cv2.imshow(win_name,frame)
+            if _cv2.waitKey(25) & 0xFF == ord('q'):
+                opening = False
 
-    def shutdown(self):
-        if self._proc:
-            self._proc.terminate()
-            self._proc = None
+        _cv2.waitKey()
+        _cv2.destroyAllWindows()
+        _cv2.waitKey()
+
+    def close(self):
+        self.capture.release()
 
