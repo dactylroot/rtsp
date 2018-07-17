@@ -57,6 +57,7 @@ class FFmpegListener:
         self._proc = None
         self._cache_path = _os.path.abspath(_os.path.dirname(__file__))+'/_current.png'
         self._rtsp_server_uri = rtsp_server_uri
+        self._start()
 
     def __enter__(self,*args,**kwargs):
         """ Returns the object which later will have __exit__ called.

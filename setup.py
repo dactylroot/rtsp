@@ -5,7 +5,7 @@ with open('README.md') as f:
     long_description = f.read()
 
 name = 'rtsp'
-version = '1.0.7'
+version = '1.0.8'
 
 ### include README as main package docfile
 from shutil import copyfile
@@ -35,7 +35,7 @@ setup(name=name
     , keywords='rtsp ffmpeg image stream'
     , install_requires=['pillow']
     , python_requires='>=3.5'
-    , zip_safe=True
+    , zip_safe=False
       )
 
 
