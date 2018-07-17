@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 # ffmpeg fetch multiple?
 def _fetch_batch():
     """ Returns three images concatenated. Don't currently know how to delimit and separate them. """
-    cmd = ['ffmpeg', '-rtsp_transport', 'tcp', '-i', 'rtsp://root:pass@10.38.4.76/StreamId=2',  '-frames', '3', '-f', 'image2pipe', '-']
+    cmd = ['ffmpeg', '-rtsp_transport', 'tcp', '-i', 'rtsp://10.38.5.145/ufirststream',  '-frames', '3', '-f', 'image2pipe', '-']
     
     return _sp.check_output(cmd)
 

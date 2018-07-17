@@ -3,19 +3,15 @@
 
 import io as _io
 import os as _os
-import time as _time
-from threading import Thread as _Thread
-import signal as _signal
 import subprocess as _sp
 
 from PIL import Image as _Image
 
-with open(_os.path.abspath(_os.path.dirname(__file__))+'/__doc__','r') as f:
-    __doc__ = f.read()
+with open(_os.path.abspath(_os.path.dirname(__file__))+'/__doc__','r') as _f:
+    __doc__ = _f.read()
 
-_sources = [ 
-              'rtsp://10.38.5.145/ufirststream'
-           ]
+_source = 'rtsp://10.38.5.145/ufirststream'
+
 
 def _check_ffmpeg():
     """ Throw exception if ffmpeg isn't found """
@@ -26,8 +22,9 @@ def _check_ffmpeg():
         pass
     raise ModuleNotFoundError("`ffmpeg` not found by system call")
 
-def fetch_image(rtsp_server_uri = _sources[0],timeout_secs = 15):
-    """ Fetch a single frame using FFMPEG. Convert to PIL Image. """
+
+def fetch_image(rtsp_server_uri = _source,timeout_secs = 15):
+    """ Fetch a single frame using FFMPEG. Convert to PIL Image. Slow. """
     
     _check_ffmpeg()
     
@@ -44,33 +41,22 @@ def fetch_image(rtsp_server_uri = _sources[0],timeout_secs = 15):
     return _Image.open(_io.BytesIO(stdout))
 
 
-class BackgroundListener:
+class FFmpegListener:
     """ Continuously fetches image frames from RTSP server in a background thread. """
 
-    @property
-    def current_image(self):
-        """ Most recently retrieved image """
-        return self._current_image
-
-    @property
     def running(self):
         """ Is background thread running """
-        return self._runflag
-    
+        return (self._proc != None) and (self._proc.poll() == None)
 
     def __init__( self
-                , rtsp_server_uri = _sources[0]
-                , timeout_secs = 15
-                , fetch_wait_secs = 10
-                , verbose = False):
+                , rtsp_server_uri = _source
+                ):
         
         _check_ffmpeg()
 
+        self._proc = None
+        self._cache_path = _os.path.abspath(_os.path.dirname(__file__))+'/_current.png'
         self._rtsp_server_uri = rtsp_server_uri
-        self._timeout_secs = timeout_secs
-        self._fetch_wait_secs = fetch_wait_secs
-        self._verbose = verbose
-        self.restart_worker()
 
     def __enter__(self,*args,**kwargs):
         """ Returns the object which later will have __exit__ called.
@@ -79,37 +65,17 @@ class BackgroundListener:
 
     def __exit__(self, type=None, value=None, traceback=None):
         """ Together with __enter__, allows support for `with-` clauses. """
-        self._runflag = False
+        self.shutdown()
 
-    def blocking_get_new_image(self,old_image = None,timeout_secs = None):
-        """ Wait until a new image is ready, then return it """
-        if timeout_secs:
-            self.timeout_secs = timeout_secs
-        while self.current_image is old_image:
-            _time.sleep(2)
-        return self.current_image
+    def read(self):
+        return _Image.open(self._cache_path)
 
-    def restart_worker(self):
-        """ Kill the background worker and restart it """
-        self._current_image = None
-        self._runflag = True
-        self._thread = _Thread(target=self._fetch_image_loop)
-        self._thread.start()
+    def start(self):
+        cmd = "ffmpeg -rtsp_transport tcp -r 0.5 -i {} -update 1 {}".format(self._rtsp_server_uri,self._cache_path)
+        self._proc = _sp.Popen( cmd.split(' '), stdout=_sp.DEVNULL, stderr=_sp.STDOUT )
 
-    def shutdown(self,verbose=True):
-        """ Set exit flags for background worker. Verbosely log when it finishes. """
-        self.__exit__()
-        self._verbose = verbose
+    def shutdown(self):
+        if self._proc:
+            self._proc.terminate()
+            self._proc = None
 
-    def _fetch_image_loop(self):
-        """ Target for background thread """
-        #image = _Image.open(_io.BytesIO(self.proc.stdout.read(-1)))
-        while self._runflag:
-            try:
-                self._current_image = fetch_image(self._rtsp_server_uri,timeout_secs = self._timeout_secs)
-                _time.sleep(self._fetch_wait_secs)
-            except TimeoutError as e:
-                self._runflag = False
-                break
-        if self._verbose:
-            print("<BackgroundListener>: shut down image fetch loop")

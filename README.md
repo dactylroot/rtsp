@@ -25,6 +25,7 @@ RTSP Client. Requires [ffmpeg](https://www.ffmpeg.org/) system call for RTSP sup
 ## Features
 
   * fetch a single image as Pillow Image
+  * open RTSP stream in FFmpeg and poll for most recent frame
 
 ## Examples
 
@@ -36,28 +37,17 @@ One-off Retrieval
 Continuous Retrieval
 
     import rtsp
-    import time
 
-    collector = rtsp.BackgroundListener()
+    collector = rtsp.FFmpegListener()
 
-    ## image_1 may be None but has no delay
-    image_1 = collector.current_image
-
-    ## image_2 will not be None but may have a delay
-    image_2 = collector.blocking_get_new_image()
-
-    ## image_2 and image_3 will not be the same
-    image_3 = collector.blocking_get_new_image(old_image = image_2)
-
-    collector.shutdown(verbose=False)
+    image = collector.read()
 
 Continuous Retrieval Context Manager
 
     import rtsp
-    import time
-    with rtsp.BackgroundListener() as collector:
-        _image = collector.blocking_get_new_image()
+    with rtsp.FFmpegListener() as collector:
+        _image = collector.read()
 
         while True:
             process_image(_image)
-            _image = collector.blocking_get_new_image(old_image = _image)
+            _image = collector.read()
