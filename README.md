@@ -33,8 +33,9 @@ RTSP Client. Requires OpenCV-Python
 One-off Retrieval
 
     import rtsp
-    with rtsp.Client('rtsp://...') as client:
-        client.read().show()
+    client = rtsp.Client(rtsp_server_uri = 'rtsp://...')
+    client.read().show()
+    client.close()
 
 Stream Preview
 
@@ -43,16 +44,6 @@ Stream Preview
         client.preview()
 
 Continuous Retrieval
-
-    import rtsp
-
-    client = rtsp.Client(rtsp_server_uri = 'rtsp://...')
-
-    image = client.read()
-
-    client.close()
-
-Continuous Retrieval Context Manager
 
     import rtsp
 
