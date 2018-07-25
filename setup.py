@@ -5,7 +5,7 @@ with open('README.md') as f:
     long_description = f.read()
 
 name = 'rtsp'
-version = '1.0.9'
+version = '1.0.10'
 
 ### include README as main package docfile
 from shutil import copyfile
@@ -14,7 +14,7 @@ copyfile(_workdir+'/README.md',_workdir+'/{0}/__doc__'.format(name))
 
 setup(name=name
     , version=version
-    , description='ffmpeg wrapper for RTSP client'
+    , description='OpenCV wrapper for RTSP client'
     , long_description=long_description
     , long_description_content_type='text/markdown'
     , author = 'Michael Stewart'
@@ -32,7 +32,7 @@ setup(name=name
         'Topic :: Multimedia :: Video :: Capture',
         'Topic :: System :: Networking'
       ]
-    , keywords='rtsp ffmpeg image stream'
+    , keywords='rtsp opencv image stream'
     , install_requires=['pillow','opencv-python']
     , python_requires='>=3.5'
     , zip_safe=False
