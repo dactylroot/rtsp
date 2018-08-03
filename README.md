@@ -32,6 +32,10 @@ RTSP Client. Requires OpenCV-Python
     * configurable number of frames to allow dropped
     * configure time to retry creating a new connection
 
+### Client
+
+    Client(rtsp_server_uri, drop_frame_limit=15, retry_connection=TRUE, verbose = TRUE)
+
 ## Examples
 
 One-off Retrieval

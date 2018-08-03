@@ -5,7 +5,7 @@ with open('README.md') as f:
     long_description = f.read()
 
 name = 'rtsp'
-version = '1.0.11'
+version = '1.1.2'
 
 ### include README as main package docfile
 from shutil import copyfile
@@ -25,7 +25,7 @@ setup(name=name
     , packages=['rtsp']
     , include_package_data=True     # includes files from e.g. MANIFEST.in
     , classifiers=[
-        'Development Status :: 5 - Production/Stable',
+        'Development Status :: 4 - Beta',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3',
         'Topic :: Multimedia :: Video',

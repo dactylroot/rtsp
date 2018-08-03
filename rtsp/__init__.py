@@ -14,7 +14,7 @@ with open(_os.path.abspath(_os.path.dirname(__file__))+'/__doc__','r') as _f:
     __doc__ = _f.read()
 
 _default_source  = "rtsp://192.168.1.3/ufirststream/track1"
-_default_verbose = False
+_default_verbose = True
 _default_drop_frame_limit = 5
 _default_retry_connection = True
 
@@ -44,9 +44,12 @@ class Client:
         return self._capture.isOpened()
 
     def read(self):
-        """ Read single frame """
+        """ Return most recent frame as Pillow image. Returns None if none have been retrieved. """
         frame = self._capture.read()
-        return _Image.fromarray(_cv2.cvtColor(frame, _cv2.COLOR_BGR2RGB))
+        if frame is not None:
+            return _Image.fromarray(_cv2.cvtColor(frame, _cv2.COLOR_BGR2RGB))
+        else:
+           return None
 
     def preview(self):
         self._capture.preview()

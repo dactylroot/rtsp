@@ -7,6 +7,9 @@ import time
 
 class LiveVideoFeed:
     """ Maintain live RTSP feed without buffering. """
+    _stream = None
+    _latest = None
+
     def __init__(self, rtsp_server_uri, drop_frame_limit = 5, retry_connection = True, verbose = False):
         """ 
             rtsp_server_uri: the path to an RTSP server. should start with "rtsp://"
@@ -18,7 +21,6 @@ class LiveVideoFeed:
         self._drop_frame_limit = drop_frame_limit
         self._retry_connection = retry_connection
         self._verbose = verbose
-        self._latest = None
         self.start()
 
     def __enter__(self,*args,**kwargs):
@@ -32,19 +34,38 @@ class LiveVideoFeed:
 
     def start(self):
         """Open new connection and continually read and cache latest frame"""
+        self.open()
         t = Thread(target=self._cache_update, args=())
         t.daemon = True
         t.start()
 
+    def open(self,rtsp_server_uri = None):
+        if not rtsp_server_uri:
+            rtsp_server_uri = self._rtsp_server_uri
+
+        self.close()
+        self._stream = cv2.VideoCapture(rtsp_server_uri)
+
+        if self._verbose:
+            if self.isOpened():
+                print("Connected to RTSP video source "+rtsp_server_uri+".")
+            else:
+                print("Failed to connect to RTSP source "+rtsp_server_uri+".")
+                return
+
+    def close(self):
+        if self.isOpened():
+            self._stream.release()
+
     def isOpened(self):
-        return self._caching
+        return self._stream is not None and self._stream.isOpened()
 
     def preview(self):
         """ Blocking function. Opens OpenCV window to display stream. """
         win_name = 'RTSP'
         cv2.namedWindow(win_name, cv2.WINDOW_AUTOSIZE)
         cv2.moveWindow(win_name,20,20)
-        while(self._caching):
+        while(self.isOpened()):
             if self._latest is not None:
                 cv2.imshow(win_name,self._latest)
             if cv2.waitKey(25) & 0xFF == ord('q'):
@@ -54,20 +75,11 @@ class LiveVideoFeed:
         cv2.waitKey()
 
     def _cache_update(self):
-        # Worker for background thread. Quits on signal from `self._caching`.
-        while True:
+        # Worker for background thread. Quits on signal from `self.close()`.
+        while self.isOpened():
             self._dropped = 0
-            self._caching = True
-            self._stream = cv2.VideoCapture(self._rtsp_server_uri)
 
-            if self._verbose:
-                if self.isOpened():
-                    print("Connected to RTSP video source "+self._rtsp_server_uri+".")
-                else:
-                    print("Failed to connect to RTSP source "+self._rtsp_server_uri+".")
-                    return
-
-            while self._dropped < self._drop_frame_limit and self._caching:
+            while self._dropped < self._drop_frame_limit and self.isOpened():
                 (grabbed, frame) = self._stream.read()
 
                 if not grabbed:
@@ -79,21 +91,21 @@ class LiveVideoFeed:
             self._stream.release()
 
             if self._verbose:
-                print("Dropped RTSP connection.")
+                announce = "Closed RTSP connection."
                 if self._dropped >= self._drop_frame_limit:
-                    print("Too many frames lost from RTSP connection.")
-                elif not self._caching:
-                    print("Received signal to stop.")
+                    print(announce + " - " + "Too many frames lost from RTSP connection.")
+                elif not self.isOpened():
+                    print(announce + " - " + "Received signal to stop.")
 
-            if not self._retry_connection:
-                break
-            else:
+            if self._retry_connection:
                 time.sleep(15)
-
-        self._caching = False
+                self.open()
+            else:
+                self.close()
+                break
 
     def read(self):
         return self._latest
 
     def stop(self):
-        self._caching = False
+        self.close()
