@@ -48,9 +48,9 @@ class LiveVideoFeed:
 
         if self._verbose:
             if self.isOpened():
-                print("Connected to RTSP video source "+rtsp_server_uri+".")
+                print("Connected to RTSP video source {}.".format(rtsp_server_uri))
             else:
-                print("Failed to connect to RTSP source "+rtsp_server_uri+".")
+                print("Failed to connect to RTSP source {}.".format(rtsp_server_uri))
                 return
 
     def close(self):

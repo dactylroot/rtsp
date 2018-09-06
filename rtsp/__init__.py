@@ -13,7 +13,7 @@ del(cvstream)
 with open(_os.path.abspath(_os.path.dirname(__file__))+'/__doc__','r') as _f:
     __doc__ = _f.read()
 
-_default_source  = "rtsp://192.168.1.3/ufirststream/track1"
+_default_source  = "rtsp://192.168.1.168/ufirststream/track1"
 _default_verbose = True
 _default_drop_frame_limit = 5
 _default_retry_connection = True

@@ -1,11 +1,12 @@
 from setuptools import setup
 from os import path
+from distutils import util
 
 with open('README.md') as f:
     long_description = f.read()
 
 name = 'rtsp'
-version = '1.1.2'
+version = '1.1.3'
 
 ### include README as main package docfile
 from shutil import copyfile
@@ -33,7 +34,7 @@ setup(name=name
         'Topic :: System :: Networking'
       ]
     , keywords='rtsp image stream'
-    , install_requires=['pillow','opencv-python']
+    , install_requires=['pillow'] + ([] if 'arm7l' in util.get_platform() else ['opencv-python'])
     , python_requires='>=3.5'
     , zip_safe=False
       )
