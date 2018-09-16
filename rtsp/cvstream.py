@@ -1,9 +1,34 @@
-### https://github.com/jrosebr1/imutils/blob/master/imutils/video/filevideostream.py
+""" OpenCV Backend RTSP Client """
 
-# import the necessary packages
 from threading import Thread
 import cv2
 import time
+from io import BytesIO
+from PIL import Image
+
+class PicamVideoFeed:
+
+    def __init__(self):
+        import picamera
+        self.cam = picamera.PiCamera()
+        
+    def preview(self,*args,**kwargs):
+        """ Blocking function. Opens OpenCV window to display stream. """
+        self.cam.start_preview(*args,**kwargs)
+
+    def read(self):
+        """https://picamera.readthedocs.io/en/release-1.13/recipes1.html#capturing-to-a-pil-image"""
+        stream = BytesIO()
+        self.cam.capture(stream, format='png')
+        # "Rewind" the stream to the beginning so we can read its content
+        stream.seek(0)
+        return Image.open(stream)
+
+    def close(self):
+        pass
+
+    def stop(self):
+        pass
 
 class LiveVideoFeed:
     """ Maintain live RTSP feed without buffering. """
@@ -42,6 +67,9 @@ class LiveVideoFeed:
     def open(self,rtsp_server_uri = None):
         if not rtsp_server_uri:
             rtsp_server_uri = self._rtsp_server_uri
+
+        if isinstance(rtsp_server_uri,str) and rtsp_server_uri.isdigit():
+            rtsp_server_uri = int(rtsp_server_uri)
 
         self.close()
         self._stream = cv2.VideoCapture(rtsp_server_uri)
@@ -105,7 +133,7 @@ class LiveVideoFeed:
                 break
 
     def read(self):
-        return self._latest
+        return Image.fromarray(cv2.cvtColor(self._latest, _cv2.COLOR_BGR2RGB))
 
     def stop(self):
         self.close()

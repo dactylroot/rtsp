@@ -1,13 +1,12 @@
 """ RTSP Client
     Wrapper around OpenCV-Python. """
 
-import io as _io
 import os as _os
 
 import cv2 as _cv2
 from PIL import Image as _Image
 from .cvstream import LiveVideoFeed as _Stream
-
+from .cvstream import PicamVideoFeed as _Picam
 del(cvstream)
 
 with open(_os.path.abspath(_os.path.dirname(__file__))+'/__doc__','r') as _f:
@@ -26,7 +25,10 @@ class Client:
             drop_frame_limit: how many dropped frames to endure before dropping a connection
             retry_connection: whether to retry opening the RTSP connection (after a fixed delay of 15s)
         """
-        self._capture = _Stream(rtsp_server_uri,drop_frame_limit,retry_connection,verbose)
+        if rtsp_server_uri.lower() in 'picamera':
+            self._capture = _Picam()
+        else:
+            self._capture = _Stream(rtsp_server_uri,drop_frame_limit,retry_connection,verbose)
 
     def __enter__(self,*args,**kwargs):
         """ Returns the object which later will have __exit__ called.
@@ -45,11 +47,7 @@ class Client:
 
     def read(self):
         """ Return most recent frame as Pillow image. Returns None if none have been retrieved. """
-        frame = self._capture.read()
-        if frame is not None:
-            return _Image.fromarray(_cv2.cvtColor(frame, _cv2.COLOR_BGR2RGB))
-        else:
-           return None
+        return self._capture.read()
 
     def preview(self):
         self._capture.preview()

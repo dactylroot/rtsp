@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 pillow = "*"
 opencv-python = {version = "*", markers = "platform_machine != 'armv7l'"}
+pyflakes = "*"
 
 [dev-packages]
 

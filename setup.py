@@ -6,7 +6,7 @@ with open('README.md') as f:
     long_description = f.read()
 
 name = 'rtsp'
-version = '1.1.3'
+version = '1.1.4'
 
 ### include README as main package docfile
 from shutil import copyfile
