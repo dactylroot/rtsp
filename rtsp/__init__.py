@@ -26,7 +26,7 @@ class Client:
             drop_frame_limit: how many dropped frames to endure before dropping a connection
             retry_connection: whether to retry opening the RTSP connection (after a fixed delay of 15s)
         """
-        self.open(rtsp_server_uri,drop_frame_limit,retry_connection,verbose)
+        self._capture = _Stream(rtsp_server_uri,drop_frame_limit,retry_connection,verbose)
 
     def __enter__(self,*args,**kwargs):
         """ Returns the object which later will have __exit__ called.
@@ -37,8 +37,8 @@ class Client:
         """ Together with __enter__, allows support for `with-` clauses. """
         self.close()
 
-    def open(self, rtsp_server_uri = _default_source, drop_frame_limit = _default_drop_frame_limit, retry_connection=_default_retry_connection,verbose = _default_verbose):
-        self._capture = _Stream(rtsp_server_uri,drop_frame_limit,retry_connection,verbose)
+    def open(self):
+        self._capture.open()
 
     def isOpened(self):
         return self._capture.isOpened()
