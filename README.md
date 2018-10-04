@@ -28,13 +28,9 @@ RTSP Client. Requires OpenCV-Python
   * open RTSP stream and poll most recent frame as Pillow Image
   * preview stream in OpenCV
 
-  * Robustness
-    * configurable number of frames to allow dropped
-    * configure time to retry creating a new connection
-
 ### Client
 
-    Client(rtsp_server_uri, drop_frame_limit=15, retry_connection=TRUE, verbose = TRUE)
+    Client(rtsp_server_uri, verbose = TRUE)
 
 ## Examples
 

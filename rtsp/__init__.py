@@ -13,22 +13,18 @@ with open(_os.path.abspath(_os.path.dirname(__file__))+'/__doc__','r') as _f:
     __doc__ = _f.read()
 
 _default_source  = "rtsp://192.168.1.168/ufirststream/track1"
-_default_verbose = True
-_default_drop_frame_limit = 5
-_default_retry_connection = True
+_default_verbose = False
 
 class Client:
-    def __init__(self, rtsp_server_uri = _default_source, drop_frame_limit = _default_drop_frame_limit, retry_connection=_default_retry_connection, verbose = _default_verbose):
+    def __init__(self, rtsp_server_uri = _default_source, verbose = _default_verbose):
         """ 
             rtsp_server_uri: the path to an RTSP server. should start with "rtsp://"
             verbose: print log or not
             drop_frame_limit: how many dropped frames to endure before dropping a connection
             retry_connection: whether to retry opening the RTSP connection (after a fixed delay of 15s)
         """
-        if rtsp_server_uri.lower() in 'picamera':
-            self._capture = _Picam()
-        else:
-            self._capture = _Stream(rtsp_server_uri,drop_frame_limit,retry_connection,verbose)
+        self.verbose = verbose
+        self._open(rtsp_server_uri)
 
     def __enter__(self,*args,**kwargs):
         """ Returns the object which later will have __exit__ called.
@@ -39,7 +35,15 @@ class Client:
         """ Together with __enter__, allows support for `with-` clauses. """
         self.close()
 
-    def open(self):
+    def _open(self,rtsp_server_uri):
+        if rtsp_server_uri.lower() in 'picamera':
+            self._capture = _Picam()
+        else:
+            self._capture = _Stream(rtsp_server_uri,self.verbose)
+
+    def open(self,rtsp_server_uri=None):
+        if rtsp_server_uri:
+            self._open(rtsp_server_uri)
         self._capture.open()
 
     def isOpened(self):

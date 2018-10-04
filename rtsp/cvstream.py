@@ -35,16 +35,12 @@ class LiveVideoFeed:
     _stream = None
     _latest = None
 
-    def __init__(self, rtsp_server_uri, drop_frame_limit = 5, retry_connection = True, verbose = False):
+    def __init__(self, rtsp_server_uri, verbose = False):
         """ 
             rtsp_server_uri: the path to an RTSP server. should start with "rtsp://"
             verbose: print log or not
-            drop_frame_limit: how many dropped frames to endure before dropping a connection
-            retry_connection: whether to retry opening the RTSP connection (after a fixed delay of 15s)
         """
         self._rtsp_server_uri = rtsp_server_uri
-        self._drop_frame_limit = drop_frame_limit
-        self._retry_connection = retry_connection
         self._verbose = verbose
         self.start()
 
@@ -60,9 +56,9 @@ class LiveVideoFeed:
     def start(self):
         """Open new connection and continually read and cache latest frame"""
         self.open()
-        t = Thread(target=self._cache_update, args=())
-        t.daemon = True
-        t.start()
+        #t = Thread(target=self._cache_update, args=())
+        #t.daemon = True
+        #t.start()
 
     def open(self,rtsp_server_uri = None):
         if not rtsp_server_uri:
@@ -93,47 +89,53 @@ class LiveVideoFeed:
         win_name = 'RTSP'
         cv2.namedWindow(win_name, cv2.WINDOW_AUTOSIZE)
         cv2.moveWindow(win_name,20,20)
+        self.open()
         while(self.isOpened()):
-            if self._latest is not None:
-                cv2.imshow(win_name,self._latest)
+            cv2.imshow(win_name,self._stream.read()[1])
+            #if self._latest is not None:
+            #    cv2.imshow(win_name,self._latest)
             if cv2.waitKey(25) & 0xFF == ord('q'):
                 break
         cv2.waitKey()
         cv2.destroyAllWindows()
         cv2.waitKey()
 
-    def _cache_update(self):
-        # Worker for background thread. Quits on signal from `self.close()`.
-        while self.isOpened():
-            self._dropped = 0
-
-            while self._dropped < self._drop_frame_limit and self.isOpened():
-                (grabbed, frame) = self._stream.read()
-
-                if not grabbed:
-                    self._dropped += 1
-                else:
-                    self._dropped = 0
-                    self._latest = frame
-
-            self._stream.release()
-
-            if self._verbose:
-                announce = "Closed RTSP connection."
-                if self._dropped >= self._drop_frame_limit:
-                    print(announce + " - " + "Too many frames lost from RTSP connection.")
-                elif not self.isOpened():
-                    print(announce + " - " + "Received signal to stop.")
-
-            if self._retry_connection:
-                time.sleep(15)
-                self.open()
-            else:
-                self.close()
-                break
+#    def _cache_update(self):
+#        # Worker for background thread. Quits on signal from `self.close()`.
+#        while self.isOpened():
+#            self._dropped = 0
+#
+#            while self._dropped < self._drop_frame_limit and self.isOpened():
+#                (grabbed, frame) = self._stream.read()
+#
+#                if not grabbed:
+#                    self._dropped += 1
+#                else:
+#                    self._dropped = 0
+#                    self._latest = frame
+#
+#            self._stream.release()
+#
+#            if self._verbose:
+#                announce = "Closed RTSP connection."
+#                if self._dropped >= self._drop_frame_limit:
+#                    print(announce + " - " + "Too many frames lost from RTSP connection.")
+#                elif not self.isOpened():
+#                    print(announce + " - " + "Received signal to stop.")
+#
+#            if self._retry_connection:
+#                time.sleep(15)
+#                self.open()
+#            else:
+#                self.close()
+#                break
 
     def read(self):
-        return Image.fromarray(cv2.cvtColor(self._latest, _cv2.COLOR_BGR2RGB))
+        self.open()
+        (grabbed, frame) = self._stream.read()
+        self._latest = frame
+        self._stream.release()
+        return Image.fromarray(cv2.cvtColor(self._latest, cv2.COLOR_BGR2RGB))
 
     def stop(self):
         self.close()
