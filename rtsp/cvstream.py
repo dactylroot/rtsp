@@ -1,6 +1,5 @@
 """ OpenCV Backend RTSP Client """
 
-from threading import Thread
 import cv2
 import time
 from io import BytesIO
@@ -83,7 +82,7 @@ class LocalVideoFeed:
 
     def read(self):
         (grabbed, frame) = self._stream.read()
-        return Image.fromarray(cv2.cvtColor(self._latest, cv2.COLOR_BGR2RGB))
+        return Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
     def preview(self):
         """ Blocking function. Opens OpenCV window to display stream. """

@@ -3,8 +3,7 @@
 
 import os as _os
 
-import cv2 as _cv2
-from PIL import Image as _Image
+from . import cvstream
 from .cvstream import RTSPVideoFeed  as _Netstream
 from .cvstream import PicamVideoFeed as _Picam
 from .cvstream import LocalVideoFeed as _Webcam

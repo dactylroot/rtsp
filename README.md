@@ -32,9 +32,10 @@ RTSP Client. Requires OpenCV-Python
 
     Client(rtsp_server_uri, verbose = TRUE)
 
-For convenience, there are some special URIs:
-  * integers load a local USB or webcam starting with interface 0 via `OpenCV`
-  * 'picam' uses a Raspberry Pi camera as source
+Special URIs are also recognized for convenience:
+
+  * integers will load a local USB or webcam starting with interface 0 via `OpenCV` e.g. `rtsp.Client(0)`
+  * 'picam' uses a Raspberry Pi camera as source e.g. `rtsp.Client('picam')`
 
 ## Examples
 
