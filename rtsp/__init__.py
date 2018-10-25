@@ -5,15 +5,16 @@ import os as _os
 
 import cv2 as _cv2
 from PIL import Image as _Image
-from .cvstream import LiveVideoFeed as _Stream
+from .cvstream import RTSPVideoFeed  as _Netstream
 from .cvstream import PicamVideoFeed as _Picam
+from .cvstream import LocalVideoFeed as _Webcam
 del(cvstream)
 
 with open(_os.path.abspath(_os.path.dirname(__file__))+'/__doc__','r') as _f:
     __doc__ = _f.read()
 
 _default_source  = "rtsp://192.168.1.168/ufirststream/track1"
-_default_verbose = False
+_default_verbose = False        
 
 class Client:
     def __init__(self, rtsp_server_uri = _default_source, verbose = _default_verbose):
@@ -24,7 +25,8 @@ class Client:
             retry_connection: whether to retry opening the RTSP connection (after a fixed delay of 15s)
         """
         self.verbose = verbose
-        self._open(rtsp_server_uri)
+        self.rtsp_server_uri = rtsp_server_uri
+        self.open(rtsp_server_uri)
 
     def __enter__(self,*args,**kwargs):
         """ Returns the object which later will have __exit__ called.
@@ -35,16 +37,18 @@ class Client:
         """ Together with __enter__, allows support for `with-` clauses. """
         self.close()
 
-    def _open(self,rtsp_server_uri):
-        if rtsp_server_uri.lower() in 'picamera':
-            self._capture = _Picam()
-        else:
-            self._capture = _Stream(rtsp_server_uri,self.verbose)
-
     def open(self,rtsp_server_uri=None):
         if rtsp_server_uri:
-            self._open(rtsp_server_uri)
-        self._capture.open()
+            self.rtsp_server_uri = rtsp_server_uri
+        else:
+            rtsp_server_uri = self.rtsp_server_uri
+
+        if isinstance(rtsp_server_uri, int):
+            self._capture = _Webcam(rtsp_server_uri,self.verbose)
+        elif rtsp_server_uri.lower() in 'picamera':
+            self._capture = _Picam()
+        else:
+            self._capture = _Netstream(rtsp_server_uri,self.verbose)
 
     def isOpened(self):
         return self._capture.isOpened()
@@ -57,5 +61,5 @@ class Client:
         self._capture.preview()
 
     def close(self):
-        self._capture.stop()
+        self._capture.close()
 
