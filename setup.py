@@ -34,7 +34,7 @@ setup(name=name
         'Topic :: System :: Networking'
       ]
     , keywords='rtsp image stream'
-    , install_requires=['pillow'] + ([] if 'arm7l' in util.get_platform() else ['opencv-python'])
+    , install_requires=['pillow'] + ([] if 'armv7l' in util.get_platform() else ['opencv-python'])
     , python_requires='>=3.5'
     , zip_safe=False
       )
