@@ -39,6 +39,8 @@ Special URIs are also recognized for convenience:
 
 ## Examples
 
+Note that you can use RTSP accesss credentials in your connection string e.g. `RTSP_URL = f"rtsp://{USERNAME}:{PASSWORD}@192.168.1.221:554/11"`
+
 One-off Retrieval
 
     import rtsp
