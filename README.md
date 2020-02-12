@@ -20,26 +20,20 @@
                                        /_|       /_|
 
 
-RTSP Client. Requires OpenCV-Python
+Convenience-wrapper around OpenCV-Python rtsp functions.
 
 ## Features
 
   * fetch a single image as Pillow Image
   * open RTSP stream and poll most recent frame as Pillow Image
   * preview stream in OpenCV
-
-### Client
-
-    Client(rtsp_server_uri, verbose = TRUE)
-
-Special URIs are also recognized for convenience:
-
-  * integers will load a local USB or webcam starting with interface 0 via `OpenCV` e.g. `rtsp.Client(0)`
-  * 'picam' uses a Raspberry Pi camera as source e.g. `rtsp.Client('picam')`
+  * uniform interface for local web-cameras for rapid prototyping
+    * integers will load a local USB or webcam starting with interface 0 via `OpenCV` e.g. `rtsp.Client(0)`
+    * 'picam' uses a Raspberry Pi camera as source e.g. `rtsp.Client('picam')`
 
 ## Examples
 
-Note that you can use RTSP accesss credentials in your connection string e.g. `RTSP_URL = f"rtsp://{USERNAME}:{PASSWORD}@192.168.1.221:554/11"`
+Use RTSP accesss credentials in your connection string e.g. `RTSP_URL = f"rtsp://{USERNAME}:{PASSWORD}@192.168.1.221:554/11"`
 
 One-off Retrieval
 
@@ -58,33 +52,17 @@ Continuous Retrieval
 
     import rtsp
 
-    with rtsp.Client(rtsp_server_uri = 'rtsp://...',drop_frame_limit=10) as client:
+    with rtsp.Client(rtsp_server_uri = 'rtsp://...',buffer_length=15) as client:
         _image = client.read()
 
         while True:
             process_image(_image)
             _image = client.read()
 
-Verbose mode
-
-    In [1]: import rtsp
-    In [2]: client = rtsp.Client()
-    Connected to RTSP video source rtsp://192.168.1.3/ufirststream/track1.
-    In [3]: client.preview()
-    In [4]: client.close()
-    Dropped RTSP connection.
-    Received signal to stop.
-    In [5]: client.open()
-    Connected to RTSP video source rtsp://192.168.1.3/ufirststream/track1.
-    In [6]: client.read().show()
-    Connected to RTSP video source rtsp://192.168.1.3/ufirststream/track1.
-    In [7]: client.close()
-    Dropped RTSP connection.
-    Received signal to stop.
-
 ## Roadmap:
-  * v1.0.0 - basic function relying on OpenCV or ffmpeg
-  * v2.0.0 - lightweight native-Python implementation rtsp client functions
-    * live stream reading & buffer
-    * on-demand frame retrieval
-  * v2.1.0 - native Python rtsp server functions
+
+I don't plan to develop this module any further, as more complex applications are better suited to use OpenCV, Gstreamer, or ffmpeg directly.
+
+To do:
+  * figure out how to  get `cv2.VideoCapture.set(cv2.CAP_PROP_BUFFERSIZE,1)` to work
+  * add better parsing for the RTSP resource URIs.
