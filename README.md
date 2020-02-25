@@ -20,7 +20,7 @@
                                        /_|       /_|
 
 
-Convenience-wrapper around OpenCV-Python rtsp functions.
+Convenience-wrapper around OpenCV-Python RTSP functions.
 
 ## Features
 
@@ -33,7 +33,7 @@ Convenience-wrapper around OpenCV-Python rtsp functions.
 
 ## Examples
 
-Use RTSP accesss credentials in your connection string e.g. `RTSP_URL = f"rtsp://{USERNAME}:{PASSWORD}@192.168.1.221:554/11"`
+Use RTSP access credentials in your connection string e.g. `RTSP_URL = f"rtsp://{USERNAME}:{PASSWORD}@192.168.1.221:554/11"`
 
 One-off Retrieval
 
@@ -52,17 +52,16 @@ Continuous Retrieval
 
     import rtsp
 
-    with rtsp.Client(rtsp_server_uri = 'rtsp://...',buffer_length=15) as client:
+    with rtsp.Client(rtsp_server_uri = 'rtsp://...') as client:
         _image = client.read()
 
         while True:
             process_image(_image)
-            _image = client.read()
+            _image = client.read(raw=True)
 
 ## Roadmap:
 
 I don't plan to develop this module any further, as more complex applications are better suited to use OpenCV, Gstreamer, or ffmpeg directly.
 
 To do:
-  * figure out how to  get `cv2.VideoCapture.set(cv2.CAP_PROP_BUFFERSIZE,1)` to work
-  * add better parsing for the RTSP resource URIs.
+  * add better parsing for the RTSP resource URIs

@@ -6,7 +6,7 @@ with open('README.md') as f:
     long_description = f.read()
 
 name = 'rtsp'
-version = '1.1.7'
+version = '1.1.8'
 
 ### include README as main package docfile
 from shutil import copyfile
@@ -15,7 +15,7 @@ copyfile(_workdir+'/README.md',_workdir+'/{0}/__doc__'.format(name))
 
 setup(name=name
     , version=version
-    , description='RTSP client'
+    , description='RTSP client wrapper around gstreamer/opencv'
     , long_description=long_description
     , long_description_content_type='text/markdown'
     , author = 'Michael Stewart'
