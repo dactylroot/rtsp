@@ -19,10 +19,6 @@ class Client:
         self._verbose = verbose
 
         self._bg = False
-        self._stream = cv2.VideoCapture(self.rtsp_server_uri)
-        if self._verbose:
-            print("Connected to video source {}.".format(self.rtsp_server_uri))
-
         self.open()
 
     def __enter__(self,*args,**kwargs):
@@ -37,6 +33,9 @@ class Client:
     def open(self):
         if self.isOpened():
             return
+        self._stream = cv2.VideoCapture(self.rtsp_server_uri)
+        if self._verbose:
+            print("Connected to video source {}.".format(self.rtsp_server_uri))
         self._bg = True
         t = Thread(target=self._update, args=())
         t.daemon = True
