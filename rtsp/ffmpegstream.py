@@ -59,19 +59,19 @@ class Client:
 
     def _update(self):
         while self.isOpened():
-            (grabbed, frame) = self._stream.read()
-            if not grabbed:
+            try:
+                self._stream.grab()
+            except:
                 self._bg = False
-            else:
-                self._queue = frame
 
     def read(self,raw=False):
         """ Retrieve most recent frame and convert to PIL. Return unconverted with raw=True. """
         try:
+            (grabbed, frame) = self._stream.retrieve()
             if raw:
-                return self._queue
+                return frame
             else:
-                return Image.fromarray(cv2.cvtColor(self._queue, cv2.COLOR_BGR2RGB))
+                return Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
         except:
             return None
 
