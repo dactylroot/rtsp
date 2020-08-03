@@ -48,6 +48,46 @@ Stream Preview
     with rtsp.Client('rtsp://...') as client:
         client.preview()
 
+Stream to Image Type Preview
+
+    import rtsp
+
+    RTSP_URL = "rtsp://..."
+    client = rtsp.Client(rtsp_server_uri = RTSP_URL)
+    
+    client.read().show()
+
+Stream to Image Type Resize Picture
+
+    import rtsp
+
+    RTSP_URL = "rtsp://..."
+    client = rtsp.Client(rtsp_server_uri = RTSP_URL)
+    
+    client.read().resize([width, height]).show()
+
+Stream to Image Type and Rotate Picture
+
+    import rtsp
+
+    RTSP_URL = "rtsp://..."
+    client = rtsp.Client(rtsp_server_uri = RTSP_URL)
+    
+    client.read().resize([client.read().size[0], client.read().size[0]]).rotate(90).resize([client.read().size[1], client.read().size[0]]).show()
+
+Stream Image Restore (With the TimeStamp)
+
+    import rtsp
+    import datetime
+
+    RTSP_URL = "rtsp://..."
+    IMAGE_COUNT = 10
+
+    client = rtsp.Client(rtsp_server_uri = RTSP_URL)
+    while client.isOpened() and IMAGE_COUNT > 0:
+        client.read().save("./"+ str(datetime.datetime.now()) +".jpg")
+        IMAGE_COUNT = IMAGE_COUNT - 1
+
 Continuous Retrieval
 
     import rtsp
