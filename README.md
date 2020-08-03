@@ -42,31 +42,20 @@ One-off Retrieval
     client.read().show()
     client.close()
 
-Stream Preview
-
-    import rtsp
-    with rtsp.Client('rtsp://...') as client:
-        client.preview()
-
-Stream to Image Type Preview
+Resize Retrieval Image
 
     import rtsp
 
     RTSP_URL = "rtsp://..."
     client = rtsp.Client(rtsp_server_uri = RTSP_URL)
-    
-    client.read().show()
 
-Stream to Image Type Resize Picture
+    width = 640
+    height = 480
 
-    import rtsp
-
-    RTSP_URL = "rtsp://..."
-    client = rtsp.Client(rtsp_server_uri = RTSP_URL)
-    
     client.read().resize([width, height]).show()
+    client.close()
 
-Stream to Image Type and Rotate Picture
+Rotate Retrieval Image
 
     import rtsp
 
@@ -74,8 +63,9 @@ Stream to Image Type and Rotate Picture
     client = rtsp.Client(rtsp_server_uri = RTSP_URL)
     
     client.read().resize([client.read().size[0], client.read().size[0]]).rotate(90).resize([client.read().size[1], client.read().size[0]]).show()
+    client.close()
 
-Stream Image Restore (With the TimeStamp)
+Save Retrieval Image (With the TimeStamp Format and Set Number of Save Image) 
 
     import rtsp
     import datetime
@@ -87,6 +77,13 @@ Stream Image Restore (With the TimeStamp)
     while client.isOpened() and IMAGE_COUNT > 0:
         client.read().save("./"+ str(datetime.datetime.now()) +".jpg")
         IMAGE_COUNT = IMAGE_COUNT - 1
+    client.close()
+
+Stream Preview
+
+    import rtsp
+    with rtsp.Client('rtsp://...') as client:
+        client.preview()
 
 Continuous Retrieval
 
