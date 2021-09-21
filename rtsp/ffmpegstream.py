@@ -18,6 +18,11 @@ class Client:
         self.rtsp_server_uri = rtsp_server_uri
         self._verbose = verbose
 
+        if isinstance(rtsp_server_uri,str) and 'picam' in rtsp_server_uri:
+            self.__class__ = PicamVideoFeed
+            _pc = PicamVideoFeed()
+            self.__dict__.update(_pc.__dict__)
+
         self._bg_run = False
         self.open()
 
@@ -90,7 +95,7 @@ class Client:
         cv2.destroyAllWindows()
         cv2.waitKey(1)
 
-class PicamVideoFeed:
+class PicamVideoFeed(Client):
 
     def __init__(self):
         import picamera
@@ -119,63 +124,3 @@ class PicamVideoFeed:
 
     def stop(self):
         pass
-
-class WebcamVideoFeed:
-    def __init__(self, source_id, verbose = False):
-        """
-            source_id: the id of a camera interface. Should be an integer
-            verbose: print log or not
-        """
-        self._cam_id = source_id
-        self._verbose = verbose
-        self.open()
-
-    def __enter__(self,*args,**kwargs):
-        """ Returns the object which later will have __exit__ called.
-            This relationship creates a context manager. """
-        return self
-
-    def __exit__(self, type=None, value=None, traceback=None):
-        """ Together with __enter__, allows support for `with-` clauses. """
-        self.close()
-
-    def open(self):
-        if self.isOpened():
-            return
-
-        self._stream = cv2.VideoCapture(self._cam_id)
-
-        if self._verbose:
-            if self.isOpened():
-                print("Connected to video source {}.".format(self._cam_id))
-            else:
-                print("Failed to connect to source {}.".format(self._cam_id))
-                return
-
-    def close(self):
-        if self.isOpened():
-            self._stream.release()
-
-    def isOpened(self):
-        try:
-            return self._stream is not None and self._stream.isOpened()
-        except:
-            return False
-
-    def read(self):
-        (grabbed, frame) = self._stream.read()
-        return Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-
-    def preview(self):
-        """ Blocking function. Opens OpenCV window to display stream. """
-        win_name = 'Camera'
-        cv2.namedWindow(win_name, cv2.WINDOW_AUTOSIZE)
-        cv2.moveWindow(win_name,20,20)
-        self.open()
-        while(self.isOpened()):
-            cv2.imshow(win_name,self._stream.read()[1])
-            if cv2.waitKey(25) & 0xFF == ord('q'):
-                break
-        cv2.waitKey()
-        cv2.destroyAllWindows()
-        cv2.waitKey()
