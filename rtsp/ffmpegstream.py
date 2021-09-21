@@ -18,7 +18,7 @@ class Client:
         self.rtsp_server_uri = rtsp_server_uri
         self._verbose = verbose
 
-        self._bg = False
+        self._bg_run = False
         self.open()
 
     def __enter__(self,*args,**kwargs):
@@ -36,23 +36,24 @@ class Client:
         self._stream = cv2.VideoCapture(self.rtsp_server_uri)
         if self._verbose:
             print("Connected to video source {}.".format(self.rtsp_server_uri))
-        self._bg = True
+        self._bg_run = True
         t = Thread(target=self._update, args=())
         t.daemon = True
         t.start()
+        self._bgt = t
         return self
 
     def close(self):
         """ signal background thread to stop. release CV stream """
-        self._bg = False
-        self._stream.release()
+        self._bg_run = False
+        self._bgt.join()
         if self._verbose:
             print("Disconnected from {}".format(self.rtsp_server_uri))
 
     def isOpened(self):
         """ return true if stream is opened and being read, else ensure closed """
         try:
-            return (self._stream is not None) and self._stream.isOpened() and self._bg
+            return (self._stream is not None) and self._stream.isOpened() and self._bg_run
         except:
             self.close()
             return False
@@ -61,9 +62,10 @@ class Client:
         while self.isOpened():
             (grabbed, frame) = self._stream.read()
             if not grabbed:
-                self._bg = False
+                self._bg_run = False
             else:
                 self._queue = frame
+        self._stream.release()
 
     def read(self,raw=False):
         """ Retrieve most recent frame and convert to PIL. Return unconverted with raw=True. """
@@ -82,11 +84,11 @@ class Client:
         cv2.moveWindow(win_name,20,20)
         while(self.isOpened()):
             cv2.imshow(win_name,self.read(raw=True))
-            if cv2.waitKey(25) & 0xFF == ord('q'):
+            if cv2.waitKey(30) == ord('q'): # wait 30 ms for 'q' input
                 break
-        cv2.waitKey()
+        cv2.waitKey(1)
         cv2.destroyAllWindows()
-        cv2.waitKey()
+        cv2.waitKey(1)
 
 class PicamVideoFeed:
 
