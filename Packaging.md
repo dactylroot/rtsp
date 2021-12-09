@@ -13,5 +13,5 @@
     * `twine upload --repository-url https://test.pypi.org/legacy/ dist/*`
       * [Preview](https://test.pypi.org/project/rtsp/)
   3. Distribute github backup:
-    1. `git tag 1.1.10 -m "tag for PyPI"`
+    1. `git tag 1.1.12 -m "tag for PyPI"`
     2. `git push --tags remotename branchname`

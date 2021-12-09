@@ -60,6 +60,43 @@ Continuous Retrieval
             process_image(_image)
             _image = client.read(raw=True)
 
+Resize Retrieval Image
+
+    import rtsp
+
+    RTSP_URL = "rtsp://..."
+    client = rtsp.Client(rtsp_server_uri = RTSP_URL)
+
+    width = 640
+    height = 480
+
+    client.read().resize([width, height]).show()
+    client.close()
+
+Rotate Retrieval Image
+
+    import rtsp
+
+    RTSP_URL = "rtsp://..."
+    client = rtsp.Client(rtsp_server_uri = RTSP_URL)
+
+    client.read().resize([client.read().size[0], client.read().size[0]]).rotate(90).resize([client.read().size[1], client.read().size[0]]).show()
+    client.close()
+
+Save Retrieval Image (With the TimeStamp Format and Set Number of Save Image)
+
+    import rtsp
+    import datetime
+
+    RTSP_URL = "rtsp://..."
+    IMAGE_COUNT = 10
+
+    client = rtsp.Client(rtsp_server_uri = RTSP_URL)
+    while client.isOpened() and IMAGE_COUNT > 0:
+        client.read().save("./"+ str(datetime.datetime.now()) +".jpg")
+        IMAGE_COUNT = IMAGE_COUNT - 1
+    client.close()
+
 ## Roadmap:
 
 I don't plan to develop this module any further, as more complex applications are better suited to use OpenCV, Gstreamer, or ffmpeg directly.
