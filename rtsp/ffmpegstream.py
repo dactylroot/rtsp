@@ -89,7 +89,7 @@ class Client:
         cv2.moveWindow(win_name,20,20)
         while(self.isOpened()):
             cv2.imshow(win_name,self.read(raw=True))
-            if cv2.waitKey(30) == ord('q'): # wait 30 ms for 'q' input
+            if cv2.waitKey(30) in (ord('q'),27):
                 break
         cv2.waitKey(1)
         cv2.destroyAllWindows()
