@@ -20,14 +20,15 @@
                                        /_|       /_|
 
 
-Convenience-wrapper around OpenCV-Python RTSP functions.
+FFmpeg-based RTSP client
 
 ## Features
 
   * read most-recent RTSP frame as Pillow Image on demand
-  * preview stream in OpenCV. 'q' to quit preview.
+  * preview stream in a tkinter window. 'q' or ESC to quit.
   * URI shortcuts for rapid prototyping
-    * integers load a USB or webcam from starting with interface 0 via **OpenCV**, e.g. `rtsp.Client(0)`
+    * integers (or numeric strings) load a local capture device via **FFmpeg**, e.g. `rtsp.Client(0)`
+    * bare host strings default to `rtsp://`, e.g. `rtsp.Client('192.168.1.1/stream')`
     * 'picam' uses a Raspberry Pi camera as source e.g. `rtsp.Client('picam')`
 
 ## Examples
@@ -100,6 +101,3 @@ Save Retrieval Image (With the TimeStamp Format and Set Number of Save Image)
 ## Roadmap:
 
 I don't plan to develop this module any further, as more complex applications are better suited to use OpenCV, Gstreamer, or ffmpeg directly.
-
-To do:
-  * might improve parsing for RTSP server URIs

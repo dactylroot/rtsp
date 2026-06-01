@@ -1,5 +1,5 @@
 """ RTSP Client
-    Wrapper around OpenCV-Python. """
+    FFmpeg-based — no OpenCV required. """
 
 import os as _os
 

@@ -6,7 +6,7 @@ with open('README.md') as f:
     long_description = f.read()
 
 name = 'rtsp'
-version = '1.1.12'
+version = '1.2.0'
 
 ### include README as main package docfile
 from shutil import copyfile
@@ -15,13 +15,12 @@ copyfile(_workdir+'/README.md',_workdir+'/{0}/__doc__'.format(name))
 
 setup(name=name
     , version=version
-    , description='RTSP client wrapper around gstreamer/opencv'
+    , description='RTSP client using FFmpeg.'
     , long_description=long_description
     , long_description_content_type='text/markdown'
-    , author = 'Michael Stewart'
-    , author_email = 'statueofmike@gmail.com'
-    , url='https://github.com/statueofmike/rtsp'
-    , download_url="https://github.com/statueofmike/rtsp/archive/{0}.tar.gz".format(version)
+    , author = 'Cory Root'
+    , url='https://github.com/dactylroot/rtsp'
+    , download_url="https://github.com/dactylroot/rtsp/archive/{0}.tar.gz".format(version)
     , license='MIT'
     , packages=['rtsp']
     , include_package_data=True     # includes files from e.g. MANIFEST.in
@@ -34,7 +33,7 @@ setup(name=name
         'Topic :: System :: Networking'
       ]
     , keywords='rtsp image stream'
-    , install_requires=['pillow'] + ([] if 'armv7l' in util.get_platform() else ['opencv-python'])
+    , install_requires=['pillow', 'numpy']
     , python_requires='>=3.5'
     , zip_safe=False
       )
