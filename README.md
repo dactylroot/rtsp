@@ -1,5 +1,10 @@
 # RTSP
 
+[![CI](https://github.com/dactylroot/rtsp/actions/workflows/test.yml/badge.svg)](https://github.com/dactylroot/rtsp/actions/workflows/test.yml)
+[![PyPI version](https://badge.fury.io/py/rtsp.svg)](https://pypi.org/project/rtsp/)
+[![Downloads](https://static.pepy.tech/badge/rtsp)](https://pepy.tech/project/rtsp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
             /((((((\\\\
     =======((((((((((\\\\\
          ((           \\\\\\\
@@ -20,7 +25,7 @@
                                        /_|       /_|
 
 
-FFmpeg-based RTSP client
+FFmpeg-based RTSP client and microserver
 
 ## Features
 
@@ -30,8 +35,11 @@ FFmpeg-based RTSP client
     * integers (or numeric strings) load a local capture device via **FFmpeg**, e.g. `rtsp.Client(0)`
     * bare host strings default to `rtsp://`, e.g. `rtsp.Client('192.168.1.1/stream')`
     * 'picam' uses a Raspberry Pi camera as source e.g. `rtsp.Client('picam')`
-
+  * lightweight RTSP server
+ 
 ## Examples
+
+### Client Use
 
 Use RTSP access credentials in your connection string e.g.
 
@@ -98,6 +106,35 @@ Save Retrieval Image (With the TimeStamp Format and Set Number of Save Image)
         IMAGE_COUNT = IMAGE_COUNT - 1
     client.close()
 
-## Roadmap:
+### Source Use
 
-I don't plan to develop this module any further, as more complex applications are better suited to use OpenCV, Gstreamer, or ffmpeg directly.
+Single-client stream using FFmpeg server. FFmpeg listens for one viewer.
+`serve_forever()` blocks and restarts automatically after each client disconnect:
+
+    import rtsp
+
+    _frame_buffer=['frame1.jpg', 'frame2.jpg', 'frame3.jpg']
+
+    with rtsp.Source('rtsp://0.0.0.0:8554/live', frame_buffer=_frame_buffer) as source:
+        source.serve_forever()   # blocks; Ctrl-C to stop
+
+Multi-client stream via [MediaMTX](https://github.com/bluenviron/mediamtx) relay.
+Also, frames can be added incrementally with `put()`:
+
+    # Terminal: ./mediamtx          (listens on :8554 by default)
+
+    import rtsp
+
+    # serve=False pushes to the running MediaMTX relay.
+    # Any number of Client() instances can then read from the same URI.
+    with rtsp.Source('rtsp://localhost:8554/live', serve=False) as source:
+        for frame in incoming_frames():
+            source.put(frame)
+
+    # Elsewhere, any number of concurrent readers:
+    with rtsp.Client('rtsp://localhost:8554/live') as client:
+        client.preview()
+
+## When to use something else
+
+For performance-intensive pipelines, consider OpenCV, GStreamer, or FFmpeg directly. For multi-client streaming without a relay, see [MediaMTX](https://github.com/bluenviron/mediamtx).

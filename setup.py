@@ -3,10 +3,12 @@ from os import path
 from distutils import util
 
 with open('README.md') as f:
-    long_description = f.read()
+    long_description = ''.join(
+        line for line in f if not line.startswith('[![')
+    )
 
 name = 'rtsp'
-version = '1.2.0'
+version = '2.0.0'
 
 ### include README as main package docfile
 from shutil import copyfile

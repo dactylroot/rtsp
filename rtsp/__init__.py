@@ -3,9 +3,8 @@
 
 import os as _os
 
-from . import ffmpegstream
-from .ffmpegstream import Client
-del(ffmpegstream)
+from . import ffmpegstream as _ffmpegstream
+from .ffmpegstream import Client, Source
 
 from pathlib import Path as _Path
 
