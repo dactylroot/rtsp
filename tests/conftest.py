@@ -1,9 +1,45 @@
+import os
 import shutil
+import signal
 import socket
 import subprocess
+import sys
 import time
+from pathlib import Path
 
 import pytest
+
+_NOUVEAU_ROOT = Path.home() / 'data' / 'nouveau' / 'nouveau'
+
+
+def _nouveau_jpgs(n=6):
+    """Return up to *n* jpg paths sampled evenly from the nouveau dataset."""
+    paths = sorted(_NOUVEAU_ROOT.glob('**/*.jpg'))
+    if not paths:
+        return []
+    step = max(1, len(paths) // n)
+    return paths[::step][:n]
+
+
+requires_nouveau = pytest.mark.skipif(
+    not _NOUVEAU_ROOT.exists(),
+    reason='~/data/nouveau/nouveau not found',
+)
+
+
+@pytest.fixture(scope='session')
+def nouveau_frames():
+    """A small list of Path objects sampled from the nouveau dataset."""
+    paths = _nouveau_jpgs()
+    if not paths:
+        pytest.skip('no images found in ~/data/nouveau/nouveau')
+    return paths
+
+
+@pytest.fixture(scope='session')
+def nouveau_frame(nouveau_frames):
+    """A single nouveau image path."""
+    return nouveau_frames[0]
 
 
 def _on_path(binary):
@@ -17,6 +53,18 @@ def _free_port():
         return s.getsockname()[1]
 
 
+def _wait_tcp(host, port, timeout=10.0):
+    """Block until a TCP connection to host:port succeeds."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            with socket.create_connection((host, port), timeout=0.2):
+                return True
+        except OSError:
+            time.sleep(0.05)
+    return False
+
+
 def wait_for_frame(client, raw=False, timeout=8):
     """Poll client.read() until a frame arrives or timeout expires."""
     deadline = time.monotonic() + timeout
@@ -26,6 +74,38 @@ def wait_for_frame(client, raw=False, timeout=8):
             return frame
         time.sleep(0.1)
     return None
+
+
+@pytest.fixture(scope='session')
+def _display_ok():
+    """Run once per session: True if a Tk window can be created in a subprocess."""
+    try:
+        proc = subprocess.Popen(
+            [sys.executable, '-c',
+             'import tkinter; r=tkinter.Tk(); r.after(0,r.quit); r.mainloop()'],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        try:
+            proc.wait(timeout=5)
+            return proc.returncode == 0
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            except Exception:
+                proc.kill()
+            proc.wait()
+            return False
+    except Exception:
+        return False
+
+
+@pytest.fixture
+def requires_display(_display_ok):
+    """Skip the test if no display is available. Use with @pytest.mark.usefixtures."""
+    if not _display_ok:
+        pytest.skip('no display available for tkinter')
 
 
 requires_ffmpeg = pytest.mark.skipif(
@@ -52,7 +132,7 @@ def ffmpeg_rtsp_server():
         stderr=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
     )
-    time.sleep(1.5)   # let FFmpeg bind and begin listening
+    _wait_tcp('127.0.0.1', port)
     yield uri
     proc.terminate()
     proc.wait(timeout=5)
@@ -71,7 +151,7 @@ def mediamtx_server(tmp_path_factory):
         stderr=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
     )
-    time.sleep(1.0)
+    _wait_tcp('localhost', port)
     yield 'rtsp://localhost:{}'.format(port)
     proc.terminate()
     proc.wait(timeout=5)

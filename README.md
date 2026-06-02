@@ -32,9 +32,9 @@ FFmpeg-based RTSP client and microserver
   * read most-recent RTSP frame as Pillow Image on demand
   * preview stream in a tkinter window. 'q' or ESC to quit.
   * URI shortcuts for rapid prototyping
-    * integers (or numeric strings) load a local capture device via **FFmpeg**, e.g. `rtsp.Client(0)`
+    * integers (or numeric strings) open a local capture device, e.g. `rtsp.Client(0)`
     * bare host strings default to `rtsp://`, e.g. `rtsp.Client('192.168.1.1/stream')`
-    * 'picam' uses a Raspberry Pi camera as source e.g. `rtsp.Client('picam')`
+    * Raspberry Pi camera: enable the V4L2 driver (`dtoverlay=imx219` or similar in `/boot/config.txt`) and use `rtsp.Client(0)`
   * lightweight RTSP server
  
 ## Examples
@@ -108,14 +108,26 @@ Save Retrieval Image (With the TimeStamp Format and Set Number of Save Image)
 
 ### Source Use
 
-Single-client stream using FFmpeg server. FFmpeg listens for one viewer.
-`serve_forever()` blocks and restarts automatically after each client disconnect:
+Serve frames locally and preview them. `source.client_uri` gives the address
+to connect to, and `verbose=True` logs the URI and fps on startup:
 
     import rtsp
 
-    _frame_buffer=['frame1.jpg', 'frame2.jpg', 'frame3.jpg']
+    frames = ['frame1.jpg', 'frame2.jpg', 'frame3.jpg']
 
-    with rtsp.Source('rtsp://0.0.0.0:8554/live', frame_buffer=_frame_buffer) as source:
+    with rtsp.Source('rtsp://0.0.0.0:8554/live', fps=1,
+                     frame_buffer=frames, verbose=True) as source:
+        with rtsp.Client(source.client_uri) as client:
+            client.preview()   # blocks; press q or ESC to quit
+
+Serve without a viewer. `serve_forever()` blocks and loops the buffer
+indefinitely until Ctrl-C:
+
+    import rtsp
+
+    frames = ['frame1.jpg', 'frame2.jpg', 'frame3.jpg']
+
+    with rtsp.Source('rtsp://0.0.0.0:8554/live', frame_buffer=frames) as source:
         source.serve_forever()   # blocks; Ctrl-C to stop
 
 Multi-client stream via [MediaMTX](https://github.com/bluenviron/mediamtx) relay.
@@ -137,4 +149,5 @@ Also, frames can be added incrementally with `put()`:
 
 ## When to use something else
 
-For performance-intensive pipelines, consider OpenCV, GStreamer, or FFmpeg directly. For multi-client streaming without a relay, see [MediaMTX](https://github.com/bluenviron/mediamtx).
+For performance-intensive pipelines, consider OpenCV, GStreamer, or FFmpeg directly.
+For multi-client streaming without a relay, see [MediaMTX](https://github.com/bluenviron/mediamtx).

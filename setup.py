@@ -35,7 +35,7 @@ setup(name=name
         'Topic :: System :: Networking'
       ]
     , keywords='rtsp image stream'
-    , install_requires=['pillow', 'numpy']
+    , install_requires=['pillow', 'numpy', 'av']
     , python_requires='>=3.5'
     , zip_safe=False
       )

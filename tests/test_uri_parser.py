@@ -1,5 +1,5 @@
 import pytest
-from rtsp.ffmpegstream import _parse_uri, _redact_uri
+from rtsp._utils import _parse_uri, _redact_uri
 
 
 class TestParseUri:
@@ -15,20 +15,6 @@ class TestParseUri:
 
     def test_numeric_string_with_whitespace(self):
         assert _parse_uri('  1  ') == ('device', 1)
-
-    # --- picam ---
-
-    def test_picam_lowercase(self):
-        kind, _ = _parse_uri('picam')
-        assert kind == 'picam'
-
-    def test_picam_uppercase(self):
-        kind, _ = _parse_uri('PICAM')
-        assert kind == 'picam'
-
-    def test_picam_mixed_case(self):
-        kind, _ = _parse_uri('PiCam://device')
-        assert kind == 'picam'
 
     # --- network: explicit schemes ---
 
