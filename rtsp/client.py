@@ -132,7 +132,7 @@ def list_devices(probe=False):
 
     Each entry is a dict:
 
-    * ``'index'``  -- int to pass directly to :class:`Client` or :class:`Client`
+    * ``'index'``  -- int to pass directly to :class:`Client`
     * ``'name'``   -- human-readable device name, or ``'Camera N'`` if not discoverable
     * ``'width'``  -- pixel width (``None`` unless *probe* is ``True``)
     * ``'height'`` -- pixel height (``None`` unless *probe* is ``True``)
@@ -320,9 +320,6 @@ class _RtspClient:
     """
 
     def __init__(self, rtsp_server_uri, verbose=False):
-        if _av is None:
-            raise ImportError('Client requires PyAV: pip install av')
-
         self.rtsp_server_uri = rtsp_server_uri
         self._verbose = verbose
         self._queue = None
@@ -376,6 +373,8 @@ class _RtspClient:
     def open(self):
         if self.isOpened():
             return self
+        if _av is None:
+            raise ImportError('Client requires PyAV: pip install av')
         if self._is_local:
             return self._open_local()
         return self._open_rtsp()
@@ -697,7 +696,7 @@ class _RtspClient:
             if channel != 0 or len(rtp) < 12:
                 continue
 
-            # RTP byte 1: M(1) PT(7) — marker bit signals end of access unit
+            # RTP byte 1: M(1) PT(7). Marker bit signals end of access unit.
             marker = bool(rtp[1] & 0x80)
 
             cc = rtp[0] & 0x0F
@@ -719,7 +718,7 @@ class _RtspClient:
             for nal in nals:
                 nal_t = nal[0] & 0x1F if nal else 0
                 if not idr_seen:
-                    if nal_t == 5:       # IDR — open the gate
+                    if nal_t == 5:       # IDR: open the gate
                         idr_seen = True
                     elif nal_t not in (7, 8):  # pass SPS/PPS, drop everything else
                         continue
@@ -764,6 +763,6 @@ def Client(rtsp_server_uri, verbose=False):
     if isinstance(uri, str):
         from urllib.parse import urlparse as _urlparse
         if _urlparse(uri).scheme in ('rtmp', 'rtmps'):
-            from .nativertmp import RTMPClient
+            from .rtmp import RTMPClient
             return RTMPClient(rtsp_server_uri, verbose=verbose)
     return _RtspClient(rtsp_server_uri, verbose=verbose)

@@ -1,23 +1,22 @@
 from setuptools import setup
 from os import path
-from distutils import util
 
 with open('README.md') as f:
     long_description = ''.join(
-        line for line in f if not line.startswith('[![')
+        line for line in f if not line.strip().startswith('[![')
     )
 
 name = 'rtsp'
 version = '2.0.0'
 
 ### include README as main package docfile
-from shutil import copyfile
 _workdir = path.abspath(path.dirname(__file__))
-copyfile(_workdir+'/README.md',_workdir+'/{0}/__doc__'.format(name))
+with open(_workdir+'/{0}/__doc__'.format(name), 'w') as f:
+    f.write(long_description)
 
 setup(name=name
     , version=version
-    , description='RTSP client using FFmpeg.'
+    , description='RTSP/RTMP client and server for Python.'
     , long_description=long_description
     , long_description_content_type='text/markdown'
     , author = 'Cory Root'
@@ -29,13 +28,23 @@ setup(name=name
     , classifiers=[
         'Development Status :: 5 - Production/Stable',
         'License :: OSI Approved :: MIT License',
+        'Intended Audience :: Developers',
+        'Operating System :: OS Independent',
         'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3 :: Only',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
+        'Programming Language :: Python :: 3.14',
         'Topic :: Multimedia :: Video',
         'Topic :: Multimedia :: Video :: Capture',
+        'Topic :: Multimedia :: Video :: Display',
+        'Topic :: Software Development :: Libraries :: Python Modules',
         'Topic :: System :: Networking'
       ]
-    , keywords='rtsp image stream'
+    , keywords='rtsp rtmp image stream server numpy pillow'
     , install_requires=['pillow', 'numpy', 'av']
-    , python_requires='>=3.5'
+    , python_requires='>=3.10'
     , zip_safe=False
       )

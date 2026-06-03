@@ -1,13 +1,15 @@
 """Python-native RTMP client and publisher via PyAV/libavformat.
 
-RTMPClient    — receive frames from an RTMP stream (av.open read mode).
-RTMPPublisher — push frames to an RTMP relay/server (av.open write mode).
+RTMPClient receives frames from an RTMP stream using av.open in read mode.
+RTMPPublisher pushes frames to an RTMP relay or server using av.open in write mode.
 
 libavformat's RTMP protocol handler manages the handshake, AMF commands,
 and chunk framing.  No FFmpeg subprocess is spawned.
 
 Requires PyAV: ``pip install av``
 """
+
+from __future__ import annotations
 
 import logging
 import time
@@ -21,7 +23,9 @@ from ._utils import _parse_uri, _to_pil
 log = logging.getLogger('rtsp.rtmp')
 
 _MIN_ENCODE_FPS = 10
-_CONNECT_TIMEOUT = 15   # seconds
+_CONNECT_TIMEOUT = 15     # seconds. Client read/connect timeout.
+_PUBLISH_TIMEOUT = 5      # seconds. Publisher connect timeout. Shorter so CI can observe failure.
+_RECONNECT_MAX = 120      # seconds. Hard cap on total reconnect wait.
 
 try:
     import av as _av
@@ -43,9 +47,6 @@ class RTMPClient:
     """
 
     def __init__(self, rtmp_uri: str, verbose: bool = False) -> None:
-        if _av is None:
-            raise ImportError('RTMPClient requires PyAV: pip install av')
-
         self.rtsp_server_uri = rtmp_uri
         self._verbose = verbose
         self._queue = None
@@ -69,6 +70,8 @@ class RTMPClient:
     def open(self):
         if self.isOpened():
             return self
+        if _av is None:
+            raise ImportError('RTMPClient requires PyAV: pip install av')
         self._bg_run = True
         t = Thread(target=self._recv_loop, daemon=True, name='rtmp-client')
         t.start()
@@ -77,14 +80,12 @@ class RTMPClient:
 
     def close(self):
         self._bg_run = False
-        container, self._container = self._container, None
-        if container:
-            try:
-                container.close()
-            except Exception:
-                pass
+        # Do NOT close the container here. The decode loop may be actively
+        # iterating it on the background thread, and closing it concurrently
+        # causes a bus error.  Setting _bg_run=False signals the thread to
+        # stop; its finally block closes the container safely.
         if self._bgt:
-            self._bgt.join(timeout=2)
+            self._bgt.join(timeout=5)
             self._bgt = None
 
     def isOpened(self) -> bool:
@@ -132,44 +133,57 @@ class RTMPClient:
     # ---- background thread ----
 
     def _recv_loop(self) -> None:
-        try:
-            container = _av.open(
-                self.rtsp_server_uri,
-                timeout=(_CONNECT_TIMEOUT, _CONNECT_TIMEOUT * 2),
-            )
-        except Exception as exc:
-            log.error('RTMP connect failed: %s', exc)
-            self._bg_run = False
-            return
+        delay = 0.5
+        deadline = time.monotonic() + _RECONNECT_MAX
 
-        self._container = container
-        video = next((s for s in container.streams if s.type == 'video'), None)
-        if video is None:
-            log.error('no video stream in %s', self.rtsp_server_uri)
-            container.close()
-            self._bg_run = False
-            return
-
-        try:
-            for frame in container.decode(video):
-                if not self._bg_run:
-                    break
-                arr = frame.to_ndarray(format='rgb24')
-                with self._lock:
-                    self._queue = arr
-                    if self._width is None:
-                        self._width = arr.shape[1]
-                        self._height = arr.shape[0]
-                        if self._verbose:
-                            log.info('stream resolution: %dx%d',
-                                     self._width, self._height)
-        except Exception as exc:
-            log.debug('RTMP decode error: %s', exc)
-        finally:
+        while self._bg_run and time.monotonic() < deadline:
             try:
+                container = _av.open(
+                    self.rtsp_server_uri,
+                    timeout=(_CONNECT_TIMEOUT, _CONNECT_TIMEOUT * 2),
+                )
+            except Exception as exc:
+                log.warning('RTMP connect failed (%s), retrying in %.1fs', exc, delay)
+                time.sleep(delay)
+                delay = min(delay * 2, 30)
+                continue
+
+            self._container = container
+            video = next((s for s in container.streams if s.type == 'video'), None)
+            if video is None:
+                log.error('no video stream in %s', self.rtsp_server_uri)
                 container.close()
-            except Exception:
-                pass
+                self._container = None
+                break
+
+            delay = 0.5  # reset on successful connect
+            try:
+                for frame in container.decode(video):
+                    if not self._bg_run:
+                        break
+                    arr = frame.to_ndarray(format='rgb24')
+                    with self._lock:
+                        self._queue = arr
+                        if self._width is None:
+                            self._width = arr.shape[1]
+                            self._height = arr.shape[0]
+                            if self._verbose:
+                                log.info('stream resolution: %dx%d',
+                                         self._width, self._height)
+            except Exception as exc:
+                log.debug('RTMP decode error: %s', exc)
+            finally:
+                try:
+                    container.close()
+                except Exception:
+                    pass
+                self._container = None
+
+            if self._bg_run:
+                log.warning('RTMP stream ended, retrying in %.1fs', delay)
+                time.sleep(delay)
+                delay = min(delay * 2, 30)
+
         self._bg_run = False
 
 
@@ -191,9 +205,6 @@ class RTMPPublisher:
                  verbose: bool = False,
                  size: tuple[int, int] | None = None,
                  frame_buffer=None) -> None:
-        if _av is None:
-            raise ImportError('RTMPPublisher requires PyAV: pip install av')
-
         kind, uri = _parse_uri(rtmp_uri)
         if kind != 'network':
             raise ValueError(
@@ -248,27 +259,11 @@ class RTMPPublisher:
             self._buffer.append(frame)
 
     def open(self):
-        """Connect to RTMP relay and start the encode loop."""
+        """Start the encode/publish thread. The RTMP connection is established inside the thread."""
         if self.isOpened() or self._size is None:
             return self
-
-        w, h = self._size
-        encode_fps = max(self._fps, _MIN_ENCODE_FPS)
-
-        container = _av.open(
-            self._uri,
-            mode='w',
-            format='flv',
-            timeout=(_CONNECT_TIMEOUT, _CONNECT_TIMEOUT * 2),
-        )
-        stream = container.add_stream('libx264', rate=int(encode_fps))
-        stream.width = w
-        stream.height = h
-        stream.pix_fmt = 'yuv420p'
-        stream.options = {'preset': 'ultrafast', 'tune': 'zerolatency'}
-
-        self._container = container
-        self._stream = stream
+        if _av is None:
+            raise ImportError('RTMPPublisher requires PyAV: pip install av')
 
         if self._verbose:
             log.info('publishing to %s', self._uri)
@@ -306,6 +301,43 @@ class RTMPPublisher:
         encode_fps = max(self._fps, _MIN_ENCODE_FPS)
         encode_interval = 1.0 / encode_fps
         advance_interval = 1.0 / self._fps
+
+        # Open the RTMP container and set up the encoder inside the thread so
+        # any connection failure is caught here rather than raising in the
+        # caller.  _PUBLISH_TIMEOUT is intentionally shorter than _CONNECT_TIMEOUT
+        # so that a dropped connection (no RST, just silence) is detected well
+        # within the 10-second window the tests use to verify clean shutdown.
+        w, h = self._size
+        container = None
+        try:
+            container = _av.open(
+                self._uri,
+                mode='w',
+                format='flv',
+                timeout=(_PUBLISH_TIMEOUT, _PUBLISH_TIMEOUT),
+            )
+            stream = container.add_stream('libx264', rate=int(encode_fps))
+            stream.width = w
+            stream.height = h
+            stream.pix_fmt = 'yuv420p'
+            stream.options = {
+                'preset': 'ultrafast',
+                'tune': 'zerolatency',
+                'g': str(int(encode_fps * 2)),
+            }
+        except Exception as exc:
+            log.warning('RTMP publish setup failed (%s), giving up', exc)
+            if container is not None:
+                try:
+                    container.close()
+                except Exception:
+                    pass
+            self._bg_run = False
+            return
+
+        self._container = container
+        self._stream = stream
+
         pts = 0
         idx = 0
         next_encode = next_advance = None

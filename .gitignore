@@ -1,5 +1,6 @@
 
 .DS_Store
+TODO
 venv/*
 
 *_current.png
@@ -8,7 +9,14 @@ venv/*
 *__pycache__*
 *__doc__*
 
+auto.crt
+auto.key
 .python-version
 
 build/*
 dist/*
+
+.coverage
+coverage.xml
+coverage.json
+junit.xml

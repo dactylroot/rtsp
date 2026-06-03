@@ -1,4 +1,4 @@
-"""Tests for rtsp.Publisher — Python-native RTSP push publisher.
+"""Tests for rtsp.Publisher.
 
 Unit tests cover the ANNOUNCE/SETUP/RECORD handshake using a fake TCP relay
 that speaks just enough RTSP to accept the connection.  No PyAV or real relay
@@ -28,7 +28,7 @@ requires_av = pytest.mark.skipif(
 
 
 # ---------------------------------------------------------------------------
-# Fake relay — accepts ANNOUNCE/SETUP/RECORD and records what it receives
+# Fake relay: accepts ANNOUNCE/SETUP/RECORD and records what it receives
 # ---------------------------------------------------------------------------
 
 class _FakeRelay:
@@ -182,6 +182,7 @@ def fake_relay():
 # Unit: RTSP handshake
 # ---------------------------------------------------------------------------
 
+@requires_av
 class TestHandshake:
 
     def test_announce_is_sent_first(self, fake_relay):
@@ -283,7 +284,7 @@ class TestRTPDelivery:
         assert pkt[0] & 0xC0 == 0x80       # RTP version=2
         assert pkt[1] & 0x7F == 96         # payload type 96 (H.264)
 
-    def test_source_serve_false_routes_to_native_publisher(self, fake_relay):
+    def test_source_serve_false_routes_to_publisher(self, fake_relay):
         uri = 'rtsp://127.0.0.1:{}/live'.format(fake_relay.port)
         src = rtsp.Source(uri, size=(64, 64), serve=False)
         assert isinstance(src, Publisher)
@@ -299,15 +300,14 @@ class TestRTPDelivery:
 @requires_av
 class TestMediamtxRoundTrip:
 
-    def test_client_receives_frame_from_publisher(self, mediamtx_server, nouveau_frames):
+    def test_client_receives_frame_from_publisher(self, mediamtx_server, synthetic_frames):
         from rtsp.client import Client
 
         path = '/pub_test'
         pub_uri = mediamtx_server + path
         client_uri = mediamtx_server + path
 
-        frames = [Image.open(p).convert('RGB') for p in nouveau_frames[:3]]
-        with Publisher(pub_uri, fps=5, frame_buffer=frames) as pub:
+        with Publisher(pub_uri, fps=5, frame_buffer=synthetic_frames[:3]) as pub:
             assert pub.isOpened()
             time.sleep(1.5)  # let mediamtx pick up the stream
             with Client(client_uri) as client:

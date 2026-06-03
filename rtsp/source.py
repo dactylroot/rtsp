@@ -3,12 +3,14 @@
 Encodes frames to H.264 via PyAV (libx264), then handles RTSP session
 negotiation and RTP packetization in Python.  No FFmpeg subprocess is spawned.
 
-Source    — built-in RTSP server; clients connect to it directly.
-Publisher — outbound RTSP publisher; pushes to a relay (mediamtx etc.)
-                  via ANNOUNCE/SETUP/RECORD.
+Source is a built-in RTSP server that clients connect to directly.
+Publisher is an outbound RTSP publisher that pushes to a relay such as mediamtx
+via ANNOUNCE/SETUP/RECORD.
 
 Requires PyAV: ``pip install av``
 """
+
+from __future__ import annotations
 
 import asyncio
 import base64
@@ -435,9 +437,6 @@ class Source:
     def __init__(self, rtsp_server_uri: str, fps: float = 25,
                  verbose: bool = False, size: tuple[int, int] | None = None,
                  frame_buffer=None) -> None:
-        if _av is None:
-            raise ImportError('Source requires PyAV: pip install av')
-
         _, uri = _parse_uri(rtsp_server_uri)
         parsed = urlparse(uri)
         self._host = parsed.hostname or '0.0.0.0'
@@ -498,6 +497,8 @@ class Source:
     # ---- lifecycle ----
 
     def _start(self) -> None:
+        if _av is None:
+            raise ImportError('Source requires PyAV: pip install av')
         if self._bg_run:
             return
         self._bg_run = True
@@ -584,7 +585,8 @@ class Source:
         codec.framerate = Fraction(int(encode_fps), 1)
         codec.time_base = Fraction(1, int(encode_fps))
         codec.gop_size = int(encode_fps)
-        codec.options = {'preset': 'ultrafast', 'tune': 'zerolatency', 'forced-idr': '1'}
+        codec.options = {'preset': 'ultrafast', 'tune': 'zerolatency',
+                         'forced-idr': '1', 'profile': 'baseline'}
         codec.open()
 
         pts = 0
@@ -653,9 +655,6 @@ class Publisher:
     def __init__(self, rtsp_server_uri: str, fps: float = 25,
                  verbose: bool = False, size: tuple[int, int] | None = None,
                  frame_buffer=None) -> None:
-        if _av is None:
-            raise ImportError('Publisher requires PyAV: pip install av')
-
         kind, uri = _parse_uri(rtsp_server_uri)
         if kind != 'network':
             raise ValueError(
@@ -678,6 +677,7 @@ class Publisher:
         self._cseq = 0
         self._session_id: str | None = None
         self._loader: Thread | None = None
+        self._encode_thread: Thread | None = None
 
         if size is not None:
             w, h = size
@@ -720,6 +720,8 @@ class Publisher:
         """Connect to relay and begin ANNOUNCE/SETUP/RECORD."""
         if self.isOpened() or self._size is None:
             return self
+        if _av is None:
+            raise ImportError('Publisher requires PyAV: pip install av')
 
         self._cseq = 0
         self._session_id = None
@@ -742,14 +744,19 @@ class Publisher:
             log.info('publishing to %s', self._uri)
 
         self._bg_run = True
-        Thread(target=self._encode_loop, daemon=True,
-               name='rtsp-native-publish').start()
+        self._encode_thread = Thread(target=self._encode_loop, daemon=True,
+                                     name='rtsp-native-publish')
+        self._encode_thread.start()
         return self
 
     def close(self) -> None:
         self._bg_run = False
         if self._loader and self._loader.is_alive():
             self._loader.join(timeout=10)
+        # Join encode thread before clearing the socket so the thread never
+        # sees self._sock = None while it is mid-send.
+        if self._encode_thread and self._encode_thread.is_alive():
+            self._encode_thread.join(timeout=5)
         sock, self._sock = self._sock, None
         if sock:
             try:
@@ -822,7 +829,7 @@ class Publisher:
     def _rtsp_setup(self, reader: _Reader) -> None:
         track_uri = self._uri.rstrip('/') + '/trackID=0'
         self._send('SETUP', track_uri, {
-            'Transport': 'RTP/AVP/TCP;unicast;interleaved=0-1',
+            'Transport': 'RTP/AVP/TCP;unicast;interleaved=0-1;mode=record',
         })
         _, headers, _ = self._recv_response(reader)
         session = headers.get('session', '')
@@ -849,7 +856,8 @@ class Publisher:
         codec.framerate = Fraction(int(encode_fps), 1)
         codec.time_base = Fraction(1, int(encode_fps))
         codec.gop_size = int(encode_fps)
-        codec.options = {'preset': 'ultrafast', 'tune': 'zerolatency', 'forced-idr': '1'}
+        codec.options = {'preset': 'ultrafast', 'tune': 'zerolatency',
+                         'forced-idr': '1', 'profile': 'baseline'}
         codec.open()
 
         packetizer = _RTPPacketizer()
@@ -896,8 +904,12 @@ class Publisher:
                 time.sleep(delay)
 
     def _send_rtp(self, pkt: bytes) -> None:
+        sock = self._sock
+        if sock is None:
+            self._bg_run = False
+            return
         frame = b'$\x00' + struct.pack('!H', len(pkt)) + pkt
         try:
-            self._sock.sendall(frame)
+            sock.sendall(frame)
         except OSError:
             self._bg_run = False

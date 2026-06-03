@@ -4,7 +4,6 @@ import os as _os
 
 from . import _utils
 from . import client as _client
-del client
 
 Client = _client.Client
 Source = _utils._source_factory

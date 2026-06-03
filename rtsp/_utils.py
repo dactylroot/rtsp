@@ -111,7 +111,7 @@ def _source_factory(rtsp_server_uri, fps=25, serve=True, verbose=False,
                       size=size, frame_buffer=frame_buffer)
     kind, uri = _parse_uri(rtsp_server_uri)
     if kind == 'network' and urlparse(uri).scheme in ('rtmp', 'rtmps'):
-        from .nativertmp import RTMPPublisher
+        from .rtmp import RTMPPublisher
         return RTMPPublisher(rtsp_server_uri, fps=fps, verbose=verbose,
                              size=size, frame_buffer=frame_buffer)
     from .source import Publisher

@@ -1,8 +1,11 @@
 # RTSP
 
 [![CI](https://github.com/dactylroot/rtsp/actions/workflows/test.yml/badge.svg)](https://github.com/dactylroot/rtsp/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/dactylroot/rtsp/graph/badge.svg?token=e4d9Fec6D5)](https://codecov.io/gh/dactylroot/rtsp)
 [![PyPI version](https://badge.fury.io/py/rtsp.svg)](https://pypi.org/project/rtsp/)
+[![PyPI pyversions](https://img.shields.io/pypi/pyversions/rtsp.svg)](https://pypi.org/project/rtsp/)
 [![Downloads](https://static.pepy.tech/badge/rtsp)](https://pepy.tech/project/rtsp)
+[![Downloads](https://static.pepy.tech/badge/rtsp/month)](https://pepy.tech/project/rtsp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
             /((((((\\\\
@@ -25,7 +28,7 @@
                                        /_|       /_|
 
 
-FFmpeg-based RTSP client and microserver
+A Pythonic RTSP client and microserver for video and computer vision work, from rapid prototyping to moderate-weight production. Pull frames from any RTSP stream or local capture device as Pillow images, preview streams in a window, or serve a frame buffer over RTSP with a single context manager. For multi-client distribution, pair it with a [MediaMTX](https://github.com/bluenviron/mediamtx) relay. For performance-intensive pipelines requiring high-throughput encoding or minimal latency, use OpenCV, GStreamer, or FFmpeg directly.
 
 ## Features
 
@@ -36,6 +39,8 @@ FFmpeg-based RTSP client and microserver
     * bare host strings default to `rtsp://`, e.g. `rtsp.Client('192.168.1.1/stream')`
     * Raspberry Pi camera: enable the V4L2 driver (`dtoverlay=imx219` or similar in `/boot/config.txt`) and use `rtsp.Client(0)`
   * lightweight RTSP server
+  * `rtmp://` and `rtmps://` URIs work with `Client` and `Source` using the same API as RTSP
+  * enumerate local capture devices with `rtsp.list_devices()`
  
 ## Examples
 
@@ -147,7 +152,3 @@ Also, frames can be added incrementally with `put()`:
     with rtsp.Client('rtsp://localhost:8554/live') as client:
         client.preview()
 
-## When to use something else
-
-For performance-intensive pipelines, consider OpenCV, GStreamer, or FFmpeg directly.
-For multi-client streaming without a relay, see [MediaMTX](https://github.com/bluenviron/mediamtx).

@@ -19,5 +19,5 @@ class TestPublicAPI:
             assert name not in rtsp.__all__, '{!r} should not be in __all__'.format(name)
 
     def test_internal_modules_not_exported(self):
-        for name in ('_utils', 'client', 'source', 'nativertmp'):
+        for name in ('_utils', 'client', 'source', 'rtmp'):
             assert name not in rtsp.__all__, '{!r} should not be in __all__'.format(name)
