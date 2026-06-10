@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rtsp"
+version = "2.0.1"
+description = "RTSP/RTMP client and server for Python."
+license = "MIT"
+readme = "README.md"
+authors = [{ name = "Cory Root" }]
+keywords = ["rtsp", "rtmp", "image", "stream", "server", "numpy", "pillow"]
+requires-python = ">=3.10"
+dependencies = ["pillow", "numpy", "av"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Multimedia :: Video :: Capture",
+    "Topic :: Multimedia :: Video :: Display",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Networking",
+]
+
+[project.urls]
+Homepage = "https://github.com/dactylroot/rtsp"
+Repository = "https://github.com/dactylroot/rtsp"
+Changelog = "https://github.com/dactylroot/rtsp/blob/main/CHANGELOG.md"
+Issues = "https://github.com/dactylroot/rtsp/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["rtsp"]

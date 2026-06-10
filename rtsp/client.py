@@ -91,40 +91,48 @@ def _platform_device_names():
     return None
 
 
-def _probe_one_frame(index):
+def _probe_one_frame(index, timeout=5):
     """Open device *index*, decode one frame, and return (width, height) or (None, None)."""
     if _av is None:
         return None, None
-    device_str, fmt, opts = _local_device_args(index)
-    kw = _device_open_kwargs(fmt, opts)
-    try:
-        container = _av.open(device_str, **kw)
-    except Exception:
-        return None, None
-    try:
-        vs = next((s for s in container.streams if s.type == 'video'), None)
-        if vs is None:
-            return None, None
-        for _ in range(30):
-            try:
-                packet = next(container.demux(vs))
-                for frame in packet.decode():
-                    return frame.width, frame.height
-            except StopIteration:
-                break
-            except OSError as exc:
-                if exc.errno == errno.EAGAIN:
-                    time.sleep(0.01)
-                    continue
-                break
-            except Exception:
-                break
-    finally:
+    result = [None, None]
+
+    def _do():
+        device_str, fmt, opts = _local_device_args(index)
+        kw = _device_open_kwargs(fmt, opts)
         try:
-            container.close()
+            container = _av.open(device_str, **kw)
         except Exception:
-            pass
-    return None, None
+            return
+        try:
+            vs = next((s for s in container.streams if s.type == 'video'), None)
+            if vs is None:
+                return
+            for _ in range(30):
+                try:
+                    packet = next(container.demux(vs))
+                    for frame in packet.decode():
+                        result[0], result[1] = frame.width, frame.height
+                        return
+                except StopIteration:
+                    break
+                except OSError as exc:
+                    if exc.errno == errno.EAGAIN:
+                        time.sleep(0.01)
+                        continue
+                    break
+                except Exception:
+                    break
+        finally:
+            try:
+                container.close()
+            except Exception:
+                pass
+
+    t = threading.Thread(target=_do, daemon=True)
+    t.start()
+    t.join(timeout=timeout)
+    return result[0], result[1]
 
 
 def list_devices(probe=False):
@@ -641,6 +649,7 @@ class _RtspClient:
 
     def _recv_loop(self, sprop_sps, sprop_pps, initial_buf):
         codec = _av.CodecContext.create('h264', 'r')
+        codec.thread_count = 1  # disable internal threading to avoid concurrent-free crashes
 
         # Pre-load out-of-band parameter sets so the decoder is ready for the
         # first IDR without needing to see the in-band SPS/PPS first.

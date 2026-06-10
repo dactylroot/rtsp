@@ -402,14 +402,16 @@ class _RTSPServer:
         log.debug('RTSP server listening on %s:%d', self._host, self._port)
 
     async def stop(self) -> None:
-        if self._server:
-            self._server.close()
-            await self._server.wait_closed()
+        # Cancel active session tasks first so wait_closed() is not blocked
+        # by sessions stuck in readline() waiting for another RTSP request.
         tasks = list(self._tasks)
         for t in tasks:
             t.cancel()
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
+        if self._server:
+            self._server.close()
+            await self._server.wait_closed()
 
 
 # ---------------------------------------------------------------------------
@@ -456,6 +458,7 @@ class Source:
         self._sps: bytes | None = None
         self._pps: bytes | None = None
         self._loader: Thread | None = None
+        self._encode_thread: Thread | None = None
 
         if size is not None:
             w, h = size
@@ -514,10 +517,14 @@ class Source:
             self._loop.run_forever()
 
         Thread(target=_run_loop, daemon=True, name='rtsp-native-loop').start()
-        Thread(target=self._encode_loop, daemon=True, name='rtsp-native-encode').start()
+        self._encode_thread = Thread(target=self._encode_loop, daemon=True, name='rtsp-native-encode')
+        self._encode_thread.start()
 
     def close(self) -> None:
         self._bg_run = False
+        t = getattr(self, '_encode_thread', None)
+        if t and t.is_alive():
+            t.join(timeout=5)
         if self._loop and self._loop.is_running():
             if self._rtsp:
                 try:
