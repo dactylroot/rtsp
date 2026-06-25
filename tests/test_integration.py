@@ -222,6 +222,7 @@ class TestClientSubprocessServer:
 # Source → GStreamer (external consumer)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.slow
 @requires_gstreamer
 class TestSourceGStreamerCompat:
     """Source consumed by gst-launch-1.0 using an independent RTSP/RTP stack."""
@@ -233,6 +234,7 @@ class TestSourceGStreamerCompat:
         src = Source('rtsp://0.0.0.0:{}/live'.format(port),
                      fps=5, size=(320, 240), frame_buffer=frames)
         src.wait_ready(timeout=10)
+        src.wait_encoding_started(timeout=5)
         yield src.client_uri
         src.close()
 

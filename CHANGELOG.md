@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.2
+
+**New**
+
+- `Client.preview()` accepts an optional `transform` callable `(PIL.Image) -> PIL.Image` applied to each frame before display.
+
 ## 2.0.0
 
 **Breaking changes**

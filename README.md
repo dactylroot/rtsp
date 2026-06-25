@@ -3,7 +3,6 @@
 [![CI](https://github.com/dactylroot/rtsp/actions/workflows/test.yml/badge.svg)](https://github.com/dactylroot/rtsp/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/dactylroot/rtsp/graph/badge.svg?token=e4d9Fec6D5)](https://codecov.io/gh/dactylroot/rtsp)
 [![PyPI version](https://badge.fury.io/py/rtsp.svg)](https://pypi.org/project/rtsp/)
-[![PyPI pyversions](https://img.shields.io/pypi/pyversions/rtsp.svg)](https://pypi.org/project/rtsp/)
 [![Downloads](https://static.pepy.tech/badge/rtsp)](https://pepy.tech/project/rtsp)
 [![Downloads](https://static.pepy.tech/badge/rtsp/month)](https://pepy.tech/project/rtsp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)

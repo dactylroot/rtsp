@@ -119,3 +119,36 @@ class TestPreviewClose:
             fake = run_preview(setup)
             assert not fake._bg_run
         ''')
+
+    def test_transform_is_applied_to_frames(self):
+        """transform callable receives each PIL Image frame and its return value is displayed."""
+        _run('''\
+            calls = []
+
+            def my_transform(frame):
+                calls.append(1)
+                # Return a visually distinct image to confirm the return value is used.
+                return Image.fromarray(np.full((64, 64, 3), 128, dtype=np.uint8))
+
+            def setup(root, fake):
+                root.after(_INJECT_MS, lambda: root.event_generate('<KeyPress-q>'))
+
+            fake = _FakeStream()
+            timed_out = [False]
+            original_Tk = tkinter.Tk
+
+            def _patched_Tk():
+                root = original_Tk()
+                setup(root, fake)
+                root.after(_TIMEOUT_MS, lambda: (timed_out.__setitem__(0, True), root.destroy()))
+                return root
+
+            with patch.object(tkinter, "Tk", _patched_Tk):
+                Client.preview(fake, transform=my_transform)
+
+            if timed_out[0]:
+                print("TIMEOUT")
+                sys.exit(1)
+
+            assert len(calls) > 0, "transform was never called"
+        ''')

@@ -184,6 +184,7 @@ class _Session:
         self._rtp_addr: tuple[str, int] | None = None
         self._tcp_channel: int | None = None
         self._playing = False
+        self._track_url: str | None = None
 
     # ---- RTP delivery ----
 
@@ -298,6 +299,7 @@ class _Session:
             if not ok:
                 self._reply(cseq, '461 Unsupported Transport')
                 return
+            self._track_url = uri
             self._reply(cseq, '200 OK', {
                 'Session': '{};timeout={}'.format(self._id, _SESSION_TIMEOUT),
                 'Transport': self._transport_response(transport_hdr),
@@ -308,7 +310,7 @@ class _Session:
             self._reply(cseq, '200 OK', {
                 'Session': self._id,
                 'RTP-Info': 'url={};seq={};rtptime=0'.format(
-                    uri, self._packetizer.seq),
+                    self._track_url or uri, self._packetizer.seq),
             })
             log.info('client %s playing', peer)
 
@@ -452,6 +454,7 @@ class Source:
         self._buffer: list[Image.Image] = []
         self._lock = Lock()
         self._ready = Event()
+        self._encoding_started = Event()
         self._bg_run = False
         self._loop: asyncio.AbstractEventLoop | None = None
         self._rtsp: _RTSPServer | None = None
@@ -538,6 +541,14 @@ class Source:
     def wait_ready(self, timeout: float = 10.0) -> bool:
         """Block until the RTSP server is listening. Returns True on success."""
         return self._ready.wait(timeout=timeout)
+
+    def wait_encoding_started(self, timeout: float = 10.0) -> bool:
+        """Block until the first SPS/PPS are captured and the SDP has sprop-parameter-sets.
+
+        Clients that require sprop-parameter-sets in the SDP (e.g. GStreamer's rtspsrc)
+        should call this after wait_ready() before connecting.
+        """
+        return self._encoding_started.wait(timeout=timeout)
 
     def serve_forever(self) -> None:
         """Block until KeyboardInterrupt, keeping the server alive."""
@@ -635,6 +646,8 @@ class Source:
                         self._sps = nal
                     elif t == 8:
                         self._pps = nal
+                if self._sps and self._pps:
+                    self._encoding_started.set()
                 for i, nal in enumerate(nals):
                     self._rtsp.broadcast(nal, ts, i == len(nals) - 1)
                 ts = (ts + ts_increment) & 0xFFFFFFFF

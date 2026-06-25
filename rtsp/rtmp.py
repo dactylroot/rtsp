@@ -220,6 +220,7 @@ class RTMPPublisher:
         self._container = None
         self._stream = None
         self._loader = None
+        self._bgt = None
 
         if size is not None:
             w, h = size
@@ -269,13 +270,18 @@ class RTMPPublisher:
             log.info('publishing to %s', self._uri)
 
         self._bg_run = True
-        Thread(target=self._encode_loop, daemon=True, name='rtmp-publisher').start()
+        t = Thread(target=self._encode_loop, daemon=True, name='rtmp-publisher')
+        t.start()
+        self._bgt = t
         return self
 
     def close(self) -> None:
         self._bg_run = False
         if self._loader and self._loader.is_alive():
             self._loader.join(timeout=10)
+        if self._bgt and self._bgt.is_alive():
+            self._bgt.join(timeout=5)
+            self._bgt = None
         container, self._container = self._container, None
         stream, self._stream = self._stream, None
         if container and stream:

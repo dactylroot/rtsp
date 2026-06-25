@@ -38,6 +38,7 @@ jobs:
           pytest tests/ --ignore=tests/test_integration.py --cov=rtsp --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy -v --tb=short
 
       - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.12'
         uses: codecov/codecov-action@v5
         with:
           files: coverage.xml
@@ -45,7 +46,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Upload test results to Codecov
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && matrix.python-version == '3.12' }}
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

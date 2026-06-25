@@ -485,8 +485,13 @@ class _RtspClient:
         except Exception:
             return None
 
-    def preview(self):
-        """Blocking.  Opens a window to display the stream.  Press 'q' or ESC to quit."""
+    def preview(self, transform=None):  # pragma: no cover
+        """Blocking.  Opens a window to display the stream.  Press 'q' or ESC to quit.
+
+        Args:
+            transform: Optional callable ``(PIL.Image) -> PIL.Image`` applied to
+                       each frame before display.
+        """
         import tkinter as tk
         from PIL import ImageTk
 
@@ -522,6 +527,8 @@ class _RtspClient:
                 return
             frame = self.read()
             if frame is not None:
+                if transform is not None:
+                    frame = transform(frame)
                 photo = ImageTk.PhotoImage(frame)
                 label.config(image=photo)
                 label.image = photo

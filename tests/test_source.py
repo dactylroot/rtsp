@@ -880,6 +880,7 @@ class TestSourceStartIdempotent:
         src._loop = None
         src._rtsp = None
         src._ready = Event()
+        src._encoding_started = Event()
         src._fps = 25
         src._port = 8554
         src._host = '0.0.0.0'
@@ -1063,3 +1064,42 @@ class TestSourceReaderEOF:
         r = _Reader(sock)
         with pytest.raises(ConnectionError):
             r.read_exact(10)
+
+
+# ---------------------------------------------------------------------------
+# Unit: Source.wait_encoding_started()
+# ---------------------------------------------------------------------------
+
+class TestWaitEncodingStarted:
+
+    def _make(self):
+        from threading import Event
+        from rtsp.source import Source as _Source
+        src = _Source.__new__(_Source)
+        src._encoding_started = Event()
+        return src
+
+    def test_returns_true_when_already_set(self):
+        src = self._make()
+        src._encoding_started.set()
+        assert src.wait_encoding_started(timeout=1) is True
+
+    def test_returns_false_on_timeout(self):
+        src = self._make()
+        assert src.wait_encoding_started(timeout=0.01) is False
+
+
+# ---------------------------------------------------------------------------
+# Integration: _encoding_started event fires after first encoded frame
+# ---------------------------------------------------------------------------
+
+@requires_av
+class TestEncodingStartedFires:
+
+    def test_event_set_after_putting_first_frame(self):
+        port = _free_port()
+        src = Source('rtsp://0.0.0.0:{}/live'.format(port), size=(64, 64))
+        src.put(Image.new('RGB', (64, 64)))
+        result = src.wait_encoding_started(timeout=10)
+        src.close()
+        assert result, '_encoding_started never fired after encoding a frame'
