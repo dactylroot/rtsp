@@ -2045,6 +2045,7 @@ class TestCloseSwallowsOSError:
         c._sock = mock_sock
         c._av_container = None
         c._bgt = None
+        c._session_id = None
         c.close()
         assert c._sock is None
 

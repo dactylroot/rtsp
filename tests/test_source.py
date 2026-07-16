@@ -1014,6 +1014,7 @@ class TestPublisherCloseOSError:
         mock_sock = MagicMock()
         mock_sock.close.side_effect = OSError('already gone')
         p._sock = mock_sock
+        p._session_id = None
         p.close()
         assert p._sock is None
 

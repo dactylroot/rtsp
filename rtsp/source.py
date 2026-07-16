@@ -32,7 +32,7 @@ except ImportError:
 import numpy as np
 from PIL import Image
 
-from ._utils import _enable_verbose, _parse_uri, _to_pil
+from ._utils import _Reader, _RtspAuth, _enable_verbose, _parse_uri, _split_credentials, _to_pil
 
 log = logging.getLogger('rtsp.native')
 
@@ -41,39 +41,7 @@ _START4 = b'\x00\x00\x00\x01'
 _START3 = b'\x00\x00\x01'
 _MAX_RTP_PAYLOAD = 1400
 _SESSION_TIMEOUT = 60
-_RECV_SIZE = 65536
 _DEFAULT_PORT = 554
-
-
-# ---------------------------------------------------------------------------
-# Buffered socket reader (used during RTSP handshake)
-# ---------------------------------------------------------------------------
-
-class _Reader:
-    __slots__ = ('_sock', '_buf')
-
-    def __init__(self, sock):
-        self._sock = sock
-        self._buf = b''
-
-    def read_until(self, delim):
-        while delim not in self._buf:
-            chunk = self._sock.recv(_RECV_SIZE)
-            if not chunk:
-                raise ConnectionError('RTSP connection closed during handshake')
-            self._buf += chunk
-        idx = self._buf.index(delim) + len(delim)
-        result, self._buf = self._buf[:idx], self._buf[idx:]
-        return result
-
-    def read_exact(self, n):
-        while len(self._buf) < n:
-            chunk = self._sock.recv(_RECV_SIZE)
-            if not chunk:
-                raise ConnectionError('RTSP connection closed during handshake')
-            self._buf += chunk
-        result, self._buf = self._buf[:n], self._buf[n:]
-        return result
 
 
 # ---------------------------------------------------------------------------
@@ -681,10 +649,14 @@ class Publisher:
                 'Source URI must be a network address, e.g. rtsp://localhost:8554/live'
             )
         from urllib.parse import urlparse as _up
-        parsed = _up(uri)
+        # Credentials in the URI userinfo go to the Authorization header,
+        # never into the RTSP request-line URI.
+        user, password, clean_uri = _split_credentials(uri)
+        parsed = _up(clean_uri)
         self._host = parsed.hostname
         self._port = parsed.port or _DEFAULT_PORT
-        self._uri = uri
+        self._uri = clean_uri
+        self._auth = _RtspAuth(user, password)
         self._fps = fps
         self._verbose = verbose
         if verbose:
@@ -779,10 +751,37 @@ class Publisher:
             self._encode_thread.join(timeout=5)
         sock, self._sock = self._sock, None
         if sock:
+            self._teardown(sock)
             try:
                 sock.close()
             except OSError:
                 pass
+
+    def _teardown(self, sock: socket.socket) -> None:
+        """Best-effort TEARDOWN so the relay frees the session immediately.
+
+        Without this, a relay may hold the published stream reserved for the
+        full SETUP timeout after an abrupt disconnect, causing a fresh
+        ANNOUNCE/RECORD to that path to fail until the old session expires.
+        Fire-and-forget: nothing reads a response after close().
+        """
+        if not self._session_id:
+            return
+        try:
+            self._cseq += 1
+            headers_out = {'Session': self._session_id}
+            auth = self._auth.header('TEARDOWN', self._uri) if self._auth else None
+            if auth:
+                headers_out['Authorization'] = auth
+            lines = [
+                'TEARDOWN {} RTSP/1.0'.format(self._uri),
+                'CSeq: {}'.format(self._cseq),
+                'User-Agent: python-rtsp',
+            ]
+            lines.extend('{}: {}'.format(k, v) for k, v in headers_out.items())
+            sock.sendall(('\r\n'.join(lines) + '\r\n\r\n').encode())
+        except OSError:
+            pass
 
     def isOpened(self) -> bool:
         return self._bg_run
@@ -814,7 +813,7 @@ class Publisher:
             msg += body
         self._sock.sendall(msg)
 
-    def _recv_response(self, reader: _Reader):
+    def _recv_response(self, reader: _Reader, allow: tuple = ()):
         raw = reader.read_until(b'\r\n\r\n')
         lines = raw.decode('utf-8', errors='ignore').rstrip('\r\n').split('\r\n')
         headers: dict[str, str] = {}
@@ -827,9 +826,40 @@ class Publisher:
             body = reader.read_exact(int(headers['content-length']))
         parts = lines[0].split(None, 2)
         code = int(parts[1]) if len(parts) >= 2 and parts[1].isdigit() else 0
-        if code not in (200, 201):
+        if code not in (200, 201) and code not in allow:
             raise RuntimeError('RTSP error: {}'.format(lines[0]))
         return code, headers, body
+
+    def _request(self, reader: _Reader, method: str, uri: str,
+                 extra: dict | None = None, body: bytes = b''):
+        """Send an RTSP request, answering a 401 challenge with credentials.
+
+        On the first 401 the ``WWW-Authenticate`` challenge is parsed, an
+        ``Authorization`` header is computed, and the request is retried once.
+        """
+        headers_out = dict(extra or {})
+        auth = self._auth.header(method, uri)
+        if auth:
+            headers_out['Authorization'] = auth
+        self._send(method, uri, headers_out, body)
+        code, headers, resp_body = self._recv_response(reader, allow=(401,))
+
+        if code == 401:
+            if not self._auth.challenge(headers):
+                raise RuntimeError(
+                    'RTSP authentication failed: no usable credentials for the '
+                    '{} challenge'.format(method)
+                )
+            headers_out['Authorization'] = self._auth.header(method, uri)
+            self._send(method, uri, headers_out, body)
+            code, headers, resp_body = self._recv_response(reader, allow=(401,))
+            if code == 401:
+                raise RuntimeError(
+                    'RTSP authentication failed: credentials rejected by the '
+                    'server ({})'.format(method)
+                )
+
+        return code, headers, resp_body
 
     def _rtsp_announce(self, reader: _Reader) -> None:
         sdp = (
@@ -843,21 +873,19 @@ class Publisher:
             'a=fmtp:96 packetization-mode=1\r\n'
             'a=control:trackID=0\r\n'
         ).encode()
-        self._send('ANNOUNCE', self._uri, {'Content-Type': 'application/sdp'}, sdp)
-        self._recv_response(reader)
+        self._request(reader, 'ANNOUNCE', self._uri,
+                      {'Content-Type': 'application/sdp'}, sdp)
 
     def _rtsp_setup(self, reader: _Reader) -> None:
         track_uri = self._uri.rstrip('/') + '/trackID=0'
-        self._send('SETUP', track_uri, {
+        _, headers, _ = self._request(reader, 'SETUP', track_uri, {
             'Transport': 'RTP/AVP/TCP;unicast;interleaved=0-1;mode=record',
         })
-        _, headers, _ = self._recv_response(reader)
         session = headers.get('session', '')
         self._session_id = session.split(';')[0].strip()
 
     def _rtsp_record(self, reader: _Reader) -> None:
-        self._send('RECORD', self._uri, {'Range': 'npt=0.000-'})
-        self._recv_response(reader)
+        self._request(reader, 'RECORD', self._uri, {'Range': 'npt=0.000-'})
 
     # ---- background thread ----
 
